@@ -2,13 +2,11 @@ package main
 
 import (
 	"log"
-	"os"
-	"strings"
 
 	"github.com/docopt/docopt-go"
 )
 
-const usage = `$0 - gunter and guntalina for synchronizing files on many hosts.
+const usage = `lorg - gunter + guntalina for synchronizing files on many hosts.
 
 lorg will create tar-archive from specified files, keeping file attributes and
 ownerships, then upload archive in parallel to the specified hosts and unpacks
@@ -24,7 +22,7 @@ Then, guntalina will be launched with that log file and will apply actions,
 that are specified in guntalina config files (each host may have different
 actions).
 
-All output from guntaline will be passed back and returned on stdout.
+All output from guntalina will be passed back and returned on stdout.
 
 Finally, all temporary files will be removed from hosts, optionally keeping
 backup of the modified files on every host.
@@ -35,8 +33,8 @@ Restrictions:
       authentication data used for all specified hosts;
 
 Usage:
-    $0 -h | --help
-    $0 [options] (-d <hosts-file-dir>|-f <hosts-file>|-o <host>)... -S <files>...
+    lorg -h | --help
+    lorg [options] (-d <hosts-file-dir>|-f <hosts-file>|-o <host>)... -S <files>...
 
 Required options:
     -o <host>            Target host in format [<username>@]<domain>[:<port>].
@@ -52,7 +50,7 @@ Options:
                            files will be deleted. Guntalina will be launched in
                            dry mode too.
     -b                   Do backup of modified files on each target host.
-                         WARNING: no backup will be done by default!
+                           WARNING: no backup will be done by default!
     -i <identity>        Identity file (private key), which will be used for
                            authentication.
                            [default: ~/.ssh/id_rsa]
@@ -76,15 +74,12 @@ Advanced options:
                            by default.
                            [default: /var/lorg/backups/]
     --temp-dir <dir>     Use specified directory for storing temporary data
-                         on each host.
+                           on each host.
                            [default: /tmp/lorg/runs/]
 `
 
 func main() {
-	args, err := docopt.Parse(
-		strings.Replace(usage, "$0", os.Args[0], -1),
-		nil, true, "1.0", false,
-	)
+	args, err := docopt.Parse(usage, nil, true, "1.0", false)
 	if err != nil {
 		panic(err)
 	}
