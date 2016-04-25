@@ -1,0 +1,6 @@
+[submodule "lib"]
+	path = lib
+	url = github.com:reconquest/tests.sh
+[submodule "tests/lib"]
+	path = tests/lib
+	url = github.com:reconquest/tests.sh
