@@ -20,7 +20,7 @@ _hastur_root_dir="/var/lib/hastur"
 :hastur() {
     mkdir -p $_hastur_root_dir
 
-    sudo hastur -q -r $_hastur_root_dir "${@}"
+    :deps:hastur -q -r $_hastur_root_dir "${@}"
 }
 
 :hastur:init() {
@@ -30,6 +30,8 @@ _hastur_root_dir="/var/lib/hastur"
     else
         printf "fail.\n\n%s\n" "$hastur_out"
     fi
+
+    trap :hastur:cleanup EXIT
 }
 
 :hastur:destroy-containers() {
@@ -45,7 +47,11 @@ _hastur_root_dir="/var/lib/hastur"
 }
 
 :hastur:cleanup() {
-    printf "Cleaning up hastur containers... "
+    printf "Cleaning up hastur containers...\n"
+
+    tests:debug() {
+        echo "${@}" >&2
+    }
 
     :hastur:destroy-containers
 
@@ -53,5 +59,3 @@ _hastur_root_dir="/var/lib/hastur"
 
     printf "ok.\n"
 }
-
-trap :hastur:cleanup EXIT

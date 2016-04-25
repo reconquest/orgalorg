@@ -1,8 +1,10 @@
-tests:involve tests/containers.sh
-tests:involve tests/hastur.sh
-tests:involve tests/sudo.sh
+tests:involve deps.sh
+tests:involve sudo.sh
+tests:involve hastur.sh
+tests:involve getopt.sh
+tests:involve containers.sh
 
-for (( i = $_containers_count; i > 0; i-- )) {
+for (( i = $(:containers:count); i > 0; i-- )) {
     :containers:spawn
 }
 

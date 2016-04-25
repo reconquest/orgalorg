@@ -1,5 +1,13 @@
 _containers_count=3
 
+:containers:set-count() {
+    _containers_count=$1
+}
+
+:containers:count() {
+    echo "$_containers_count"
+}
+
 :containers:spawn() {
     tests:eval :hastur -kS ${@:-/bin/true}
 }
