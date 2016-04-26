@@ -1,5 +1,7 @@
 # FIXME make it possible to specify non-system root dir
-_hastur_root_dir="/var/lib/hastur"
+export _hastur_root_dir=${_hastur_root_dir:-/var/lib/hastur}
+
+export _hastur_packages=${_hastur_packages:-bash,coreutils}
 
 :hastur:keep-containers() {
     :hastur:destroy-containers() {
@@ -17,6 +19,10 @@ _hastur_root_dir="/var/lib/hastur"
     }
 }
 
+:hastur:get-packages() {
+    echo $_hastur_packages
+}
+
 :hastur() {
     mkdir -p $_hastur_root_dir
 
@@ -25,7 +31,14 @@ _hastur_root_dir="/var/lib/hastur"
 
 :hastur:init() {
     printf "Cheking and initializing hastur... "
-    if hastur_out=$(:hastur -S /bin/true 2>&1); then
+
+    _hastur_packages+=",$1"
+
+    hastur_out=$(
+        :hastur -p $_hastur_packages -S /bin/true 2>&1 \
+            | :progress:step \
+    );
+    if [ $? -eq 0 ]; then
         printf "ok.\n"
     else
         printf "fail.\n\n%s\n" "$hastur_out"

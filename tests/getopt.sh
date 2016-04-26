@@ -27,9 +27,7 @@ OPTS
 
     set -- $(getopt --long $long_opts -o vhAO:: -- "${@}")
 
-    :containers:set-count 3
-
-    local opts=()
+    :containers:set-count 1
 
     while :; do
         case "$1" in
@@ -64,5 +62,5 @@ OPTS
         esac
     done
 
-    eval "$opts_var=(${opts})"
+    eval $opts_var=\("${opts[@]}"\)
 }

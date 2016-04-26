@@ -1,4 +1,4 @@
-_containers_count=3
+export _containers_count=${_containers_count:-1}
 
 :containers:set-count() {
     _containers_count=$1
@@ -9,7 +9,7 @@ _containers_count=3
 }
 
 :containers:spawn() {
-    tests:eval :hastur -kS ${@:-/bin/true}
+    tests:pipe :hastur -p $(:hastur:get-packages) -kS ${@:-/bin/true}
 }
 
 :containers:destroy() {
@@ -32,7 +32,7 @@ _containers_count=3
     local container_name=$1
     shift
 
-    :hastur -Sn "$container_name" "${@}"
+    tests:run-background :containers:spawn -n "$container_name" "${@}"
 }
 
 :containers:list-to-var() {
@@ -42,4 +42,10 @@ _containers_count=3
     while read container_name; do
         eval "$var_name+=($container_name)"
     done < <(:containers:list)
+}
+
+:containers:get-ip() {
+    local container_name="$1"
+
+    :hastur -Q $container_name --ip
 }
