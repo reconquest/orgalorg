@@ -1,6 +1,15 @@
-[submodule "lib"]
-	path = lib
-	url = github.com:reconquest/tests.sh
-[submodule "tests/lib"]
-	path = tests/lib
-	url = github.com:reconquest/tests.sh
+[submodule "vendor/github.com/reconquest/test-runner.bash"]
+	path = vendor/github.com/reconquest/test-runner.bash
+	url = https://github.com/reconquest/test-runner.bash
+[submodule "vendor/github.com/reconquest/progress.bash"]
+	path = vendor/github.com/reconquest/progress.bash
+	url = https://github.com/reconquest/progress.bash
+[submodule "vendor/github.com/reconquest/import.bash"]
+	path = vendor/github.com/reconquest/import.bash
+	url = https://github.com/reconquest/import.bash
+[submodule "vendor/github.com/reconquest/opts.bash"]
+	path = vendor/github.com/reconquest/opts.bash
+	url = https://github.com/reconquest/opts.bash
+[submodule "vendor/github.com/reconquest/tests.sh"]
+	path = vendor/github.com/reconquest/tests.sh
+	url = https://github.com/reconquest/tests.sh

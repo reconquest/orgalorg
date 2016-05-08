@@ -9,17 +9,17 @@ export _containers_count=${_containers_count:-1}
 }
 
 :containers:spawn() {
-    tests:pipe :hastur -p $(:hastur:get-packages) -kS ${@:-/bin/true}
+    :hastur -p $(:hastur:get-packages) -kS "${@:-/bin/true}"
 }
 
 :containers:destroy() {
     local container_name=$1
 
-    tests:eval :hastur -D "$container_name"
+    :hastur -f -D "$container_name"
 }
 
 :containers:list() {
-    tests:pipe :hastur -Qc | awk '{ print $1 }'
+    :hastur -Qc | awk '{ print $1 }'
 }
 
 :containers:wipe() {
@@ -32,20 +32,37 @@ export _containers_count=${_containers_count:-1}
     local container_name=$1
     shift
 
-    tests:run-background :containers:spawn -n "$container_name" "${@}"
+    :containers:spawn -n "$container_name" "${@}"
 }
 
-:containers:list-to-var() {
+:containers:get-list() {
     local var_name="$1"
 
     eval "$var_name=()"
-    while read container_name; do
+    while read "container_name"; do
         eval "$var_name+=($container_name)"
     done < <(:containers:list)
 }
 
+:containers:get-ip-list() {
+    local var_name="$1"
+
+    local ip
+
+    eval "$var_name=()"
+    while read "container_name"; do
+        ip=$(:containers:get-ip "$container_name")
+        eval "$var_name+=($ip)"
+    done < <(:containers:list)
+}
+
+
 :containers:get-ip() {
     local container_name="$1"
 
-    :hastur -Q $container_name --ip
+    :hastur -Q "$container_name" --ip | cut -f1 -d/
+}
+
+:containers:is-active() {
+    :hastur:is-active "${@}"
 }

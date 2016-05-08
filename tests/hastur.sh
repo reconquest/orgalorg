@@ -1,7 +1,7 @@
 # FIXME make it possible to specify non-system root dir
 export _hastur_root_dir=${_hastur_root_dir:-/var/lib/hastur}
 
-export _hastur_packages=${_hastur_packages:-bash,coreutils}
+export _hastur_packages=${_hastur_packages:-bash,coreutils,shadow}
 
 :hastur:keep-containers() {
     :hastur:destroy-containers() {
@@ -24,34 +24,38 @@ export _hastur_packages=${_hastur_packages:-bash,coreutils}
 }
 
 :hastur() {
-    mkdir -p $_hastur_root_dir
-
-    :deps:hastur -q -r $_hastur_root_dir "${@}"
+    :sudo hastur -q -r $_hastur_root_dir "${@}"
 }
 
 :hastur:init() {
+    local progress_indicator=$1
+    shift
+
     printf "Cheking and initializing hastur... "
 
-    _hastur_packages+=",$1"
+    mkdir -p $_hastur_root_dir
 
-    hastur_out=$(
-        :hastur -p $_hastur_packages -S /bin/true 2>&1 \
-            | :progress:step \
-    );
-    if [ $? -eq 0 ]; then
+    _hastur_packages=$_hastur_packages",$1"
+
+    local hastur_out
+
+    if hastur_out=$(
+        :hastur -p $_hastur_packages -S /usr/bin/true 2>&1 \
+            | progress:spinner:spin "$progress_indicator"
+    )
+    then
         printf "ok.\n"
     else
         printf "fail.\n\n%s\n" "$hastur_out"
+        return 1
     fi
-
-    trap :hastur:cleanup EXIT
 }
 
 :hastur:destroy-containers() {
     :hastur -Qc \
         | awk '{ print $1 }' \
         | while read container_name; do
-            :hastur -D $container_name
+            :hastur -f -D $container_name
         done
 }
 
@@ -71,4 +75,12 @@ export _hastur_packages=${_hastur_packages:-bash,coreutils}
     :hastur:destroy-root
 
     printf "ok.\n"
+}
+
+:hastur:is-active() {
+    local container_name=$1
+    shift
+
+    :sudo:silent hastur -q -r $_hastur_root_dir -Q "$container_name" --ip \
+        2>/dev/null >/dev/null
 }

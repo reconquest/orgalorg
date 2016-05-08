@@ -2,23 +2,63 @@
 
 set -euo pipefail
 
-cd tests/
+_base_dir=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
+source "$_base_dir/vendor/github.com/reconquest/import.bash/import.bash"
 
-source progress.sh
+import "github.com/reconquest/progress"
+import "github.com/reconquest/test-runner"
+import "github.com/reconquest/tests.sh"
 
-source deps.sh
-source sudo.sh
-source hastur.sh
-source getopt.sh
-source containers.sh
+include tests/ssh.sh
+include tests/sudo.sh
+include tests/hastur.sh
+include tests/containers.sh
 
-:usage:parse-opts opts "${@}"
+test-runner:set-custom-opts \
+    --keep-containers \
+    --keep-images \
+    --containers-count:
 
-:progress:start
+test-runner:handle-opts() {
+    case "$1" in
+        --keep-containers)
+            :hastur:keep-containers
+            ;;
 
-:deps:check-hastur
-:deps:check-tests.sh
+        --keep-images)
+            :hastur:keep-images
+            ;;
 
-:hastur:init openssh,pam
+        --containers-count)
+            :containers:set-count "$2"
+            ;;
+    esac
+}
 
-:deps:tests.sh -d testcases -s local-setup.sh "${opts[@]:--A}"
+which brctl >/dev/null 2>&1
+if [ $? -ne 0 ]; then
+    echo "missing dependency: brctl (bridge-utils)"
+    exit 1
+fi
+
+which hastur >/dev/null 2>&1
+if [ $? -ne 0 ]; then
+    echo "missing dependency: hastur"
+    exit 1
+fi
+
+go build
+
+progress:spinner:new _progress_spinner
+
+:hastur:init "$_progress_spinner" openssh,pam
+
+:cleanup() {
+    :hastur:cleanup
+
+    progress:spinner:stop "$_progress_spinner"
+}
+
+trap :cleanup EXIT
+
+test-runner:run "${@}"
