@@ -1,23 +1,21 @@
-tests:clone orgalorg bin/
+tests:clone "orgalorg" "bin/"
 
-tests:debug "!!! spawning $(:containers:count) containers"
+tests:debug "!!! spawning $(containers:count) containers"
 
-for (( i = $(:containers:count); i > 0; i-- )); do
-    tests:ensure :containers:spawn
-done
+tests:ensure containers:spawn
 
 tests:debug "!!! generating local key pair"
 
 tests:ensure :ssh:keygen-local "$(:ssh:get-key)"
 
-:containers:get-list "containers"
+containers:get-list "containers"
 
 tests:debug "!!! bootstrapping containers"
 
 for container_name in "${containers[@]}"; do
     tests:ensure :ssh:keygen-remote "$container_name"
 
-    tests:ensure :containers:run "$container_name" -- \
+    tests:ensure containers:run "$container_name" -- \
         /usr/bin/sh -c "
             /usr/bin/useradd -G wheel $(:ssh:get-username)
 
@@ -36,14 +34,14 @@ tests:debug "!!! running SSH daemon on containers"
 for container_name in "${containers[@]}"; do
     tests:run-background "pid" :ssh:run-daemon "$container_name" "-D"
 
-    while ! :containers:is-active "$container_name" :; do
+    while ! containers:is-active "$container_name"; do
         tests:debug "[$container_name] is offline"
     done
 
     tests:debug "[$container_name] is online"
 done
 
-:containers:get-ip-list "ips"
+containers:get-ip-list "ips"
 
 for container_index in "${!containers[@]}"; do
     container_name=${containers[$container_index]}

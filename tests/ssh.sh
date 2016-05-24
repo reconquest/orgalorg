@@ -10,7 +10,7 @@
     local container_name=$1
     shift
 
-    :containers:run "$container_name" -- \
+    containers:run "$container_name" -- \
         /usr/bin/sshd "${@:--Dd}"
 }
 
@@ -25,7 +25,7 @@
     local container_name=$1
     shift
 
-    :containers:run "$container_name" -- \
+    containers:run "$container_name" -- \
         /usr/bin/ssh-keygen "${@:--A}"
 }
 
@@ -34,7 +34,7 @@
     local username=$2
     shift
 
-    :containers:run "$container_name" -- \
+    containers:run "$container_name" -- \
         /usr/bin/tee -a /home/$username/.ssh/authorized_keys > /dev/null
 }
 

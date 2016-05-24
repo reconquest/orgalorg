@@ -10,3 +10,9 @@
 [submodule "vendor/github.com/reconquest/tests.sh"]
 	path = vendor/github.com/reconquest/tests.sh
 	url = https://github.com/reconquest/tests.sh
+[submodule "vendor/github.com/reconquest/hastur.bash"]
+	path = vendor/github.com/reconquest/hastur.bash
+	url = https://github.com/reconquest/hastur.bash
+[submodule "vendor/github.com/reconquest/containers.bash"]
+	path = vendor/github.com/reconquest/containers.bash
+	url = https://github.com/reconquest/containers.bash
