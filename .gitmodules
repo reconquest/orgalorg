@@ -7,9 +7,6 @@
 [submodule "vendor/github.com/reconquest/import.bash"]
 	path = vendor/github.com/reconquest/import.bash
 	url = https://github.com/reconquest/import.bash
-[submodule "vendor/github.com/reconquest/opts.bash"]
-	path = vendor/github.com/reconquest/opts.bash
-	url = https://github.com/reconquest/opts.bash
 [submodule "vendor/github.com/reconquest/tests.sh"]
 	path = vendor/github.com/reconquest/tests.sh
 	url = https://github.com/reconquest/tests.sh
