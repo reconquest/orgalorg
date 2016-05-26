@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"io"
+	"strings"
 	"sync"
 )
 
@@ -11,56 +12,78 @@ type lineFlushWriter struct {
 	mutex  *sync.Mutex
 	writer io.Writer
 	buffer *bytes.Buffer
+
+	newlineAtEnd bool
 }
 
-func newLineFlushWriter(writer io.Writer) lineFlushWriter {
+func newLineFlushWriter(
+	mutex *sync.Mutex,
+	writer io.Writer,
+	newlineAtEnd bool,
+) lineFlushWriter {
 	return lineFlushWriter{
 		writer: writer,
-		mutex:  &sync.Mutex{},
+		mutex:  mutex,
 		buffer: &bytes.Buffer{},
+
+		newlineAtEnd: newlineAtEnd,
 	}
 }
 
 func (writer lineFlushWriter) Write(data []byte) (int, error) {
-	_, err := writer.buffer.Write(data)
+	written, err := writer.buffer.Write(data)
 	if err != nil {
-		return 0, err
+		return written, err
 	}
 
-	err = writer.Flush()
-	if err != nil {
-		return 0, err
-	}
+	var (
+		reader = bufio.NewReader(writer.buffer)
+		eof    = false
+	)
 
-	return len(data), nil
-}
+	for !eof {
+		line, err := reader.ReadString('\n')
 
-func (writer lineFlushWriter) Flush() error {
-	writer.mutex.Lock()
-	defer writer.mutex.Unlock()
+		writer.mutex.Lock()
 
-	if !bytes.Contains(writer.buffer.Bytes(), []byte("\n")) {
-		return nil
-	}
-
-	scanner := bufio.NewScanner(writer.buffer)
-	for scanner.Scan() {
-		line := scanner.Text()
-
-		_, err := writer.writer.Write([]byte(line + "\n"))
 		if err != nil {
-			return err
+			if err != io.EOF {
+				writer.mutex.Unlock()
+				return 0, err
+			} else {
+				eof = true
+			}
 		}
 
-		if !bytes.Contains(writer.buffer.Bytes(), []byte("\n")) {
-			return nil
+		if eof {
+			writer.buffer.Reset()
+			written, err := writer.buffer.WriteString(line)
+			writer.mutex.Unlock()
+			if err != nil {
+				return written, err
+			}
+		} else {
+			written, err := writer.writer.Write([]byte(line))
+			writer.mutex.Unlock()
+			if err != nil {
+				return written, err
+			}
 		}
-
 	}
 
-	return nil
+	return written, nil
 }
 
 func (writer lineFlushWriter) Close() error {
-	return writer.Flush()
+	if writer.newlineAtEnd && writer.buffer.Len() > 0 {
+		if !strings.HasSuffix(writer.buffer.String(), "\n") {
+			_, err := writer.buffer.WriteString("\n")
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	_, err := writer.writer.Write(writer.buffer.Bytes())
+	return err
 }

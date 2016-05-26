@@ -1,11 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/user"
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/docopt/docopt-go"
 	"github.com/kovetskiy/lorg"
@@ -42,9 +45,9 @@ Restrictions:
 
 Usage:
     orgalorg -h | --help
-    orgalorg [options] (-o <host>...|-s) -S <files>... [(-d|--stop-at-upload)]
-    orgalorg [options] (-o <host>...|-s) -C <command>...
-    orgalorg [options] (-o <host>...|-s) (-L|--stop-at-lock)
+    orgalorg [options] [-v]... (-o <host>...|-s) -S <files>... [-d|--stop-at-upload]
+    orgalorg [options] [-v]... (-o <host>...|-s) (-C|--command) [--] <command>...
+    orgalorg [options] [-v]... (-o <host>...|-s) (-L|--stop-at-lock)
 
 Operation modes:
     -S --sync            Sync.
@@ -76,7 +79,7 @@ Options:
                           authentication. If '-k' option is not used, then
                           password authentication will be used instead.
                           [default: $HOME/.ssh/id_rsa]
-    -p --pasword         Enable password authentication.
+    -p --password        Enable password authentication.
                           Exclude '-k' option.
     -x --no-sudo         Do not try to obtain root (via 'sudo -i').
                           By default, orgalorg will try to obtain root and do
@@ -89,12 +92,13 @@ Options:
                           [default: /var/run/orgalorg/files/$RUNID]
     -u --user <user>     Username used for connecting to all hosts by default.
                           [default: $USER]
+    -q --quiet           Be quiet, in command mode do not use prefixes.
     -v --verbose         Print debug information on stderr.
     -V --version         Print program version.
 
 Advanced options:
     --lock-file <path>   File to put lock onto.
-                         [default: /]
+                          [default: /]
     -e --relative        Upload files by relative path. By default, all
                           specified files will be uploaded on the target
                           hosts by absolute paths, e.g. if you running
@@ -107,8 +111,8 @@ Advanced options:
     --post-action <exe>  Run specified post-action tool on each remote node.
                           Post-action tool should accept followin arguments:
                           * string prefix, that should be used to prefix all
-                            stdout and stderr from the process; all unprefixed
-                            data will be treated as control commands.
+                          stdout and stderr from the process; all unprefixed
+                          data will be treated as control commands.
                           * path to directory which contain received files.
                           * additional arguments from the '-g' flag.
                           * --
@@ -144,11 +148,12 @@ const (
 )
 
 var (
-	logger = lorg.NewLog()
+	logger  = lorg.NewLog()
+	verbose = verbosityNormal
 )
 
 func main() {
-	logger.SetFormat(lorg.NewFormat("* ${time} ${level:[%s]:left} %s"))
+	logger.SetFormat(lorg.NewFormat("* ${time} ${level:[%s]:right} %s"))
 	currentUser, err := user.Current()
 	if err != nil {
 		logger.Fatal(hierr.Errorf(
@@ -165,7 +170,9 @@ func main() {
 		panic(err)
 	}
 
-	if args["--verbose"].(bool) {
+	verbose = parseVerbosity(args)
+
+	if verbose >= verbosityDebug {
 		logger.SetLevel(lorg.LevelDebug)
 	}
 
@@ -179,11 +186,61 @@ func main() {
 	case args["-S"].(bool):
 		err = synchronize(args)
 
+	case args["--command"].(bool):
+		fallthrough
+	case args["-C"].(bool):
+		err = command(args)
 	}
 
 	if err != nil {
 		logger.Fatal(err)
 	}
+}
+
+func command(args map[string]interface{}) error {
+	var (
+		lockFile     = args["--lock-file"].(string)
+		commandToRun = args["<command>"].([]string)
+	)
+
+	runners, err := createRunnerFactory(args)
+	if err != nil {
+		return hierr.Errorf(
+			err,
+			`can't create runner factory`,
+		)
+	}
+
+	addresses, err := parseAddresses(args)
+	if err != nil {
+		return hierr.Errorf(
+			err,
+			`can't parse all specified addresses`,
+		)
+	}
+
+	debugf(`connecting to %d nodes`, len(addresses))
+
+	cluster, err := acquireDistributedLock(lockFile, runners, addresses)
+	if err != nil {
+		return hierr.Errorf(
+			err,
+			`acquiring global cluster lock failed`,
+		)
+	}
+
+	logger.Debugf(`global lock acquired on %d nodes`, len(cluster.nodes))
+
+	err = runCommand(cluster, commandToRun, parseVerbosity(args))
+	if err != nil {
+		return hierr.Errorf(
+			err,
+			`can't run command on %d nodes`,
+			len(cluster.nodes),
+		)
+	}
+
+	return nil
 }
 
 func synchronize(args map[string]interface{}) error {
@@ -192,7 +249,6 @@ func synchronize(args map[string]interface{}) error {
 		uploadOnly  = args["--stop-at-upload"].(bool) || args["-d"].(bool)
 		fileSources = args["<files>"].([]string)
 		relative    = args["--relative"].(bool)
-		rootDir     = args["--root"].(string)
 		lockFile    = args["--lock-file"].(string)
 	)
 
@@ -226,6 +282,8 @@ func synchronize(args map[string]interface{}) error {
 		)
 	}
 
+	infof(`connecting to %d nodes`, len(addresses))
+
 	cluster, err := acquireDistributedLock(lockFile, runners, addresses)
 	if err != nil {
 		return hierr.Errorf(
@@ -245,8 +303,6 @@ func synchronize(args map[string]interface{}) error {
 
 		os.Exit(0)
 	}
-
-	logger.Infof(`file upload started into: '%s'`, rootDir)
 
 	err = upload(args, cluster, filesList)
 	if err != nil {
@@ -270,7 +326,13 @@ func upload(
 	cluster *distributedLock,
 	filesList []string,
 ) error {
-	receivers, err := startArchiveReceivers(cluster, args)
+	var (
+		rootDir = args["--root"].(string)
+	)
+
+	logger.Infof(`file upload started into: '%s'`, rootDir)
+
+	receivers, err := startArchiveReceivers(cluster, rootDir)
 	if err != nil {
 		return hierr.Errorf(
 			err,
@@ -301,6 +363,7 @@ func upload(
 func createRunnerFactory(args map[string]interface{}) (runnerFactory, error) {
 	var (
 		sshKeyPath, _ = args["--key"].(string)
+		askPassword   = args["--password"].(bool)
 	)
 
 	timeouts, err := makeTimeouts(args)
@@ -312,18 +375,32 @@ func createRunnerFactory(args map[string]interface{}) (runnerFactory, error) {
 	}
 
 	switch {
+	case askPassword:
+		password, err := readPassword(sshPasswordPrompt)
+		if err != nil {
+			return nil, hierr.Errorf(
+				err,
+				`can't read password`,
+			)
+		}
+
+		return createRemoteRunnerFactoryWithPassword(
+			password,
+			timeouts,
+		), nil
+
 	case sshKeyPath != "":
 		return createRemoteRunnerFactoryWithKey(
 			sshKeyPath,
 			timeouts,
 		), nil
 
-	default:
-		return createRemoteRunnerFactoryWithAskedPassword(
-			sshPasswordPrompt,
-			timeouts,
-		), nil
 	}
+
+	return nil, hierr.Errorf(
+		err,
+		`no matching runner factory found [password, publickey]`,
+	)
 }
 
 func parseAddresses(args map[string]interface{}) ([]address, error) {
@@ -354,4 +431,17 @@ func parseAddresses(args map[string]interface{}) ([]address, error) {
 
 func generateRunID() string {
 	return time.Now().Format("20060102150405.999999")
+}
+
+func readPassword(prompt string) (string, error) {
+	fmt.Fprint(os.Stderr, prompt)
+	password, err := terminal.ReadPassword(0)
+	fmt.Fprintln(os.Stderr)
+	if err != nil {
+		return "", hierr.Errorf(
+			err, "can't read master password from terminal",
+		)
+	}
+
+	return string(password), nil
 }

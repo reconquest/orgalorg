@@ -3,30 +3,58 @@ package main
 import (
 	"bytes"
 	"io"
-	"regexp"
 )
 
 type prefixWriter struct {
 	writer io.Writer
 	prefix string
+
+	streamStarted  bool
+	lineIncomplete bool
 }
 
-func newPrefixWriter(writer io.Writer, prefix string) prefixWriter {
-	return prefixWriter{
+func newPrefixWriter(writer io.Writer, prefix string) *prefixWriter {
+	return &prefixWriter{
 		writer: writer,
 		prefix: prefix,
 	}
 }
 
-func (writer prefixWriter) Write(data []byte) (int, error) {
-	prefixedData := regexp.MustCompile(`(?m)^`).ReplaceAllLiteral(
-		bytes.TrimRight(data, "\n"),
-		[]byte(writer.prefix),
-	)
+func (writer *prefixWriter) Write(data []byte) (int, error) {
+	reader := bytes.NewBuffer(data)
+	eof := false
+	for !eof {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			if err != io.EOF {
+				return 0, err
+			} else {
+				eof = true
+			}
+		}
 
-	_, err := writer.writer.Write(prefixedData)
-	if err != nil {
-		return 0, err
+		if line == "" {
+			continue
+		}
+
+		if !writer.streamStarted {
+			line = writer.prefix + line
+
+			writer.streamStarted = true
+		} else {
+			if !writer.lineIncomplete {
+				line = writer.prefix + line
+			}
+
+			if eof {
+				writer.lineIncomplete = true
+			}
+		}
+
+		_, err = writer.writer.Write([]byte(line))
+		if err != nil {
+			return 0, err
+		}
 	}
 
 	return len(data), nil

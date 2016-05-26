@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 
 	"github.com/seletskiy/hierr"
 	"github.com/theairkit/runcmd"
@@ -41,7 +42,9 @@ func (node *distributedLockNode) lock(
 		lockLockedString,
 	)
 
-	logger.Debug(hierr.Errorf(
+	logMutex := &sync.Mutex{}
+
+	tracef("%s", hierr.Errorf(
 		lockCommandString,
 		`%s running lock command`,
 		node,
@@ -61,10 +64,12 @@ func (node *distributedLockNode) lock(
 	}
 
 	stderr := newLineFlushWriter(
+		logMutex,
 		newPrefixWriter(
 			newDebugWriter(logger),
 			fmt.Sprintf("%s {flock} <stderr> ", node.String()),
 		),
+		true,
 	)
 
 	lockCommand.SetStderr(stderr)
@@ -115,7 +120,7 @@ func (node *distributedLockNode) lock(
 		)
 	}
 
-	logger.Debugf(`%s lock acquired`, node)
+	tracef(`lock acquired: '%s' on '%s'`, node, filename)
 
 	return &distributedLockReleaser{
 		lockReadStdin: stdin,

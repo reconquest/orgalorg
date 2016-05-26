@@ -8,14 +8,14 @@ import (
 )
 
 type distributedLock struct {
-	nodes []distributedLockNode
+	nodes []*distributedLockNode
 }
 
 func (lock *distributedLock) addNodeRunner(
 	runner runcmd.Runner,
 	address address,
 ) error {
-	lock.nodes = append(lock.nodes, distributedLockNode{
+	lock.nodes = append(lock.nodes, &distributedLockNode{
 		address: address,
 		runner:  runner,
 	})
@@ -24,8 +24,16 @@ func (lock *distributedLock) addNodeRunner(
 }
 
 func (lock *distributedLock) acquire(filename string) error {
-	for _, node := range lock.nodes {
+	for nodeIndex, node := range lock.nodes {
+		tracef(
+			"%4d/%d locking node: '%s'",
+			nodeIndex+1,
+			len(lock.nodes),
+			node.String(),
+		)
+
 		_, err := node.lock(filename)
+
 		if err != nil {
 			nodes := []string{}
 			for _, node := range lock.nodes {

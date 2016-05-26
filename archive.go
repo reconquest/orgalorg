@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 	"syscall"
 
 	"github.com/seletskiy/hierr"
@@ -13,12 +14,8 @@ import (
 
 func startArchiveReceivers(
 	lockedNodes *distributedLock,
-	args map[string]interface{},
-) (*archiveReceivers, error) {
-	var (
-		rootDir = args["--root"].(string)
-	)
-
+	rootDir string,
+) (*remoteExecution, error) {
 	archiveReceiverCommandString := fmt.Sprintf(
 		`tar -x --verbose --directory="%s"`,
 		rootDir,
@@ -26,19 +23,23 @@ func startArchiveReceivers(
 
 	unpackers := []io.WriteCloser{}
 
-	nodes := []archiveReceiverNode{}
+	nodes := []remoteExecutionNode{}
+
+	logMutex := &sync.Mutex{}
 
 	for _, node := range lockedNodes.nodes {
-		debugf(hierr.Errorf(
-			archiveReceiverCommandString,
-			"%s starting archive receiver command",
-			node.String(),
-		).Error())
+		tracef(
+			"%s",
+			hierr.Errorf(
+				archiveReceiverCommandString,
+				"%s starting archive receiver command",
+				node.String(),
+			).Error(),
+		)
 
 		archiveReceiverCommand, err := node.runner.Command(
 			archiveReceiverCommandString,
 		)
-
 		if err != nil {
 			return nil, hierr.Errorf(
 				err,
@@ -57,21 +58,24 @@ func startArchiveReceivers(
 		unpackers = append(unpackers, stdin)
 
 		stdout := newLineFlushWriter(
+			logMutex,
 			newPrefixWriter(
 				newDebugWriter(logger),
-				fmt.Sprintf("%s {tar} <stdout> ", node.String()),
+				node.String()+" {tar} <stdout> ",
 			),
+			true,
+		)
+
+		stderr := newLineFlushWriter(
+			logMutex,
+			newPrefixWriter(
+				newDebugWriter(logger),
+				node.String()+" {tar} <stderr> ",
+			),
+			true,
 		)
 
 		archiveReceiverCommand.SetStdout(stdout)
-
-		stderr := newLineFlushWriter(
-			newPrefixWriter(
-				newDebugWriter(logger),
-				fmt.Sprintf("%s {tar} <stderr> ", node.String()),
-			),
-		)
-
 		archiveReceiverCommand.SetStderr(stderr)
 
 		err = archiveReceiverCommand.Start()
@@ -82,13 +86,16 @@ func startArchiveReceivers(
 			)
 		}
 
-		nodes = append(nodes, archiveReceiverNode{
+		nodes = append(nodes, remoteExecutionNode{
 			node:    node,
 			command: archiveReceiverCommand,
+
+			stdout: stdout,
+			stderr: stderr,
 		})
 	}
 
-	return &archiveReceivers{
+	return &remoteExecution{
 		stdin: multiWriteCloser{unpackers},
 		nodes: nodes,
 	}, nil
@@ -106,7 +113,7 @@ func archiveFilesToWriter(target io.Writer, files []string) error {
 	archive := tar.NewWriter(target)
 	for fileIndex, fileName := range files {
 		logger.Infof(
-			"(%d/%d) sending file: '%s'",
+			"%5d/%d sending file: '%s'",
 			fileIndex+1,
 			len(files),
 			fileName,
@@ -115,7 +122,7 @@ func archiveFilesToWriter(target io.Writer, files []string) error {
 		writeFileToArchive(fileName, archive, workDir)
 	}
 
-	debugf("closing archive stream, %d files sent", len(files))
+	tracef("closing archive stream, %d files sent", len(files))
 
 	err = archive.Close()
 	if err != nil {
@@ -168,7 +175,7 @@ func writeFileToArchive(
 		ModTime: fileInfo.ModTime(),
 	}
 
-	debugf(
+	tracef(
 		hierr.Errorf(
 			fmt.Sprintf(
 				"size: %d bytes; mode: %o; uid/gid: %d/%d; modtime: %s",

@@ -24,12 +24,10 @@ func createRemoteRunnerFactoryWithKey(
 	}
 }
 
-func createRemoteRunnerFactoryWithAskedPassword(
-	prompt string,
+func createRemoteRunnerFactoryWithPassword(
+	password string,
 	timeouts *runcmd.Timeouts,
 ) runnerFactory {
-	// TODO ask password
-	password := ""
 	return func(address address) (runcmd.Runner, error) {
 		return runcmd.NewRemotePassAuthRunnerWithTimeouts(
 			address.user,
