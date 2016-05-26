@@ -42,9 +42,9 @@ Restrictions:
 
 Usage:
     orgalorg -h | --help
-    orgalorg [options] (-o <host>...|-s) -S <files>... [-d]
+    orgalorg [options] (-o <host>...|-s) -S <files>... [(-d|--stop-at-upload)]
     orgalorg [options] (-o <host>...|-s) -C <command>...
-    orgalorg [options] (-o <host>...|-s) (-L | --stop-at-lock)
+    orgalorg [options] (-o <host>...|-s) (-L|--stop-at-lock)
 
 Operation modes:
     -S --sync            Sync.
@@ -187,6 +187,7 @@ func main() {
 func synchronize(args map[string]interface{}) error {
 	var (
 		lockOnly    = args["--stop-at-lock"].(bool)
+		uploadOnly  = args["--stop-at-upload"].(bool) || args["-d"].(bool)
 		fileSources = args["<files>"].([]string)
 		relative    = args["--relative"].(bool)
 	)
@@ -232,7 +233,7 @@ func synchronize(args map[string]interface{}) error {
 	logger.Infof(`global lock acquired on %d nodes`, len(cluster.nodes))
 
 	if lockOnly {
-		logger.Info("--stop-at-lock was passed, waiting for interrupt...")
+		logger.Info("-L|--stop-at-lock was passed, waiting for interrupt...")
 
 		wait := sync.WaitGroup{}
 		wait.Add(1)
@@ -241,6 +242,28 @@ func synchronize(args map[string]interface{}) error {
 		os.Exit(0)
 	}
 
+	err = upload(args, cluster, filesList)
+	if err != nil {
+		return hierr.Errorf(
+			err,
+			`can't upload files on the remote nodes`,
+		)
+	}
+
+	logger.Info(`upload done`)
+
+	if uploadOnly {
+		logger.Info("-d|--stop-at-upload was passed, finishing...")
+	}
+
+	return nil
+}
+
+func upload(
+	args map[string]interface{},
+	cluster *distributedLock,
+	filesList []string,
+) error {
 	receivers, err := startArchiveReceivers(cluster, args)
 	if err != nil {
 		return hierr.Errorf(
@@ -267,8 +290,6 @@ func synchronize(args map[string]interface{}) error {
 			`can't finish files archive`,
 		)
 	}
-
-	logger.Info(`upload done`)
 
 	return nil
 }
