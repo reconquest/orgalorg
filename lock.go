@@ -3,13 +3,10 @@ package main
 import "github.com/seletskiy/hierr"
 
 func acquireDistributedLock(
-	args map[string]interface{},
+	lockFile string,
 	runnerFactory runnerFactory,
 	addresses []address,
 ) (*distributedLock, error) {
-	var (
-		lockFile = args["--lock-file"].(string)
-	)
 
 	lock := &distributedLock{}
 

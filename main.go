@@ -157,14 +157,16 @@ func main() {
 		))
 	}
 
-	logger.SetLevel(lorg.LevelDebug)
-
 	usage := strings.Replace(usage, "$USER", currentUser.Username, -1)
 	usage = strings.Replace(usage, "$HOME", currentUser.HomeDir, -1)
 	usage = strings.Replace(usage, "$RUNID", generateRunID(), -1)
 	args, err := docopt.Parse(usage, nil, true, version, false)
 	if err != nil {
 		panic(err)
+	}
+
+	if args["--verbose"].(bool) {
+		logger.SetLevel(lorg.LevelDebug)
 	}
 
 	switch {
@@ -190,6 +192,8 @@ func synchronize(args map[string]interface{}) error {
 		uploadOnly  = args["--stop-at-upload"].(bool) || args["-d"].(bool)
 		fileSources = args["<files>"].([]string)
 		relative    = args["--relative"].(bool)
+		rootDir     = args["--root"].(string)
+		lockFile    = args["--lock-file"].(string)
 	)
 
 	addresses, err := parseAddresses(args)
@@ -202,7 +206,7 @@ func synchronize(args map[string]interface{}) error {
 
 	filesList := []string{}
 	if !lockOnly {
-		logger.Info(`building files list`)
+		logger.Infof(`building files list from %d sources`, len(fileSources))
 		filesList, err = getFilesList(relative, fileSources...)
 		if err != nil {
 			return hierr.Errorf(
@@ -222,7 +226,7 @@ func synchronize(args map[string]interface{}) error {
 		)
 	}
 
-	cluster, err := acquireDistributedLock(args, runners, addresses)
+	cluster, err := acquireDistributedLock(lockFile, runners, addresses)
 	if err != nil {
 		return hierr.Errorf(
 			err,
@@ -241,6 +245,8 @@ func synchronize(args map[string]interface{}) error {
 
 		os.Exit(0)
 	}
+
+	logger.Infof(`file upload started into: '%s'`, rootDir)
 
 	err = upload(args, cluster, filesList)
 	if err != nil {
@@ -271,8 +277,6 @@ func upload(
 			`can't start archive receivers on the cluster`,
 		)
 	}
-
-	logger.Info(`file upload started`)
 
 	err = archiveFilesToWriter(receivers.stdin, filesList)
 	if err != nil {
