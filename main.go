@@ -169,6 +169,8 @@ func main() {
 
 	switch {
 	case args["-L"].(bool):
+		// because of docopt
+		args["--stop-at-lock"] = true
 		fallthrough
 	case args["--stop-at-lock"].(bool):
 		fallthrough
