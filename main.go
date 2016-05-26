@@ -140,7 +140,7 @@ Control commands:
 
 const (
 	defaultSSHPort    = 22
-	SSHPasswordPrompt = "Password: "
+	sshPasswordPrompt = "Password: "
 )
 
 var (
@@ -186,10 +186,9 @@ func main() {
 
 func synchronize(args map[string]interface{}) error {
 	var (
-		SSHKeyPath, _ = args["--key"].(string)
-		lockOnly      = args["--stop-at-lock"].(bool)
-		fileSources   = args["<files>"].([]string)
-		relative      = args["--relative"].(bool)
+		lockOnly    = args["--stop-at-lock"].(bool)
+		fileSources = args["<files>"].([]string)
+		relative    = args["--relative"].(bool)
 	)
 
 	addresses, err := parseAddresses(args)
@@ -197,14 +196,6 @@ func synchronize(args map[string]interface{}) error {
 		return hierr.Errorf(
 			err,
 			`can't parse all specified addresses`,
-		)
-	}
-
-	timeouts, err := makeTimeouts(args)
-	if err != nil {
-		return hierr.Errorf(
-			err,
-			`can't parse SSH connection timeouts`,
 		)
 	}
 
@@ -222,23 +213,15 @@ func synchronize(args map[string]interface{}) error {
 		logger.Infof(`file list contains %d files`, len(filesList))
 	}
 
-	var runnerFactory runnerFactory
-
-	switch {
-	case SSHKeyPath != "":
-		runnerFactory = createRemoteRunnerFactoryWithKey(
-			SSHKeyPath,
-			timeouts,
-		)
-
-	default:
-		runnerFactory = createRemoteRunnerFactoryWithAskedPassword(
-			SSHPasswordPrompt,
-			timeouts,
+	runners, err := createRunnerFactory(args)
+	if err != nil {
+		return hierr.Errorf(
+			err,
+			`can't create runner factory`,
 		)
 	}
 
-	cluster, err := acquireDistributedLock(args, runnerFactory, addresses)
+	cluster, err := acquireDistributedLock(args, runners, addresses)
 	if err != nil {
 		return hierr.Errorf(
 			err,
@@ -290,6 +273,34 @@ func synchronize(args map[string]interface{}) error {
 	return nil
 }
 
+func createRunnerFactory(args map[string]interface{}) (runnerFactory, error) {
+	var (
+		sshKeyPath, _ = args["--key"].(string)
+	)
+
+	timeouts, err := makeTimeouts(args)
+	if err != nil {
+		return nil, hierr.Errorf(
+			err,
+			`can't parse SSH connection timeouts`,
+		)
+	}
+
+	switch {
+	case sshKeyPath != "":
+		return createRemoteRunnerFactoryWithKey(
+			sshKeyPath,
+			timeouts,
+		), nil
+
+	default:
+		return createRemoteRunnerFactoryWithAskedPassword(
+			sshPasswordPrompt,
+			timeouts,
+		), nil
+	}
+}
+
 func parseAddresses(args map[string]interface{}) ([]address, error) {
 	var (
 		defaultUser = args["--user"].(string)
@@ -299,7 +310,7 @@ func parseAddresses(args map[string]interface{}) ([]address, error) {
 	addresses := []address{}
 
 	for _, host := range hosts {
-		address, err := parseAddress(
+		parsedAddress, err := parseAddress(
 			host, defaultUser, defaultSSHPort,
 		)
 		if err != nil {
@@ -310,7 +321,7 @@ func parseAddresses(args map[string]interface{}) ([]address, error) {
 			)
 		}
 
-		addresses = append(addresses, address)
+		addresses = append(addresses, parsedAddress)
 	}
 
 	return uniqAddresses(addresses), nil

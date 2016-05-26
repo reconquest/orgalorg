@@ -8,53 +8,8 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"golang.org/x/crypto/ssh"
-
 	"github.com/seletskiy/hierr"
-	"github.com/theairkit/runcmd"
 )
-
-type archiveReceiverNode struct {
-	node    distributedLockNode
-	command runcmd.CmdWorker
-}
-
-type archiveReceivers struct {
-	stdin io.WriteCloser
-	nodes []archiveReceiverNode
-}
-
-func (receivers *archiveReceivers) wait() error {
-	err := receivers.stdin.Close()
-	if err != nil {
-		return hierr.Errorf(
-			err,
-			`can't close archive stream`,
-		)
-	}
-
-	for _, receiver := range receivers.nodes {
-		err := receiver.command.Wait()
-		if err != nil {
-			if sshErr, ok := err.(*ssh.ExitError); ok {
-				return fmt.Errorf(
-					`%s failed to receive archive, `+
-						`remote command exited with non-zero code: %d`,
-					receiver.node.String(),
-					sshErr.Waitmsg.ExitStatus(),
-				)
-			} else {
-				return hierr.Errorf(
-					err,
-					`%s failed to receive archive, unexpected error`,
-					receiver.node.String(),
-				)
-			}
-		}
-	}
-
-	return nil
-}
 
 func startArchiveReceivers(
 	lockedNodes *distributedLock,
@@ -150,41 +105,6 @@ func archiveFilesToWriter(target io.Writer, files []string) error {
 
 	archive := tar.NewWriter(target)
 	for fileIndex, fileName := range files {
-		fileInfo, err := os.Stat(fileName)
-
-		if err != nil {
-			return hierr.Errorf(
-				err,
-				`can't stat file for archiving: '%s`, fileName,
-			)
-		}
-
-		// avoid tar warnings about leading slash
-		tarFileName := fileName
-		if tarFileName[0] == '/' {
-			tarFileName = tarFileName[1:]
-
-			fileName, err = filepath.Rel(workDir, fileName)
-			if err != nil {
-				return hierr.Errorf(
-					err,
-					`can't make relative path from: '%s'`,
-					fileName,
-				)
-			}
-		}
-
-		header := &tar.Header{
-			Name: tarFileName,
-			Mode: int64(fileInfo.Sys().(*syscall.Stat_t).Mode),
-			Size: fileInfo.Size(),
-
-			Uid: int(fileInfo.Sys().(*syscall.Stat_t).Uid),
-			Gid: int(fileInfo.Sys().(*syscall.Stat_t).Gid),
-
-			ModTime: fileInfo.ModTime(),
-		}
-
 		logger.Infof(
 			"(%d/%d) sending file: '%s'",
 			fileIndex+1,
@@ -192,48 +112,7 @@ func archiveFilesToWriter(target io.Writer, files []string) error {
 			fileName,
 		)
 
-		debugf(
-			hierr.Errorf(
-				fmt.Sprintf(
-					"size: %d bytes; mode: %o; uid/gid: %d/%d; modtime: %s",
-					header.Size,
-					header.Mode,
-					header.Uid,
-					header.Gid,
-					header.ModTime,
-				),
-				`local file: %s; remote file: %s`,
-				fileName,
-				tarFileName,
-			).Error(),
-		)
-
-		err = archive.WriteHeader(header)
-
-		if err != nil {
-			return hierr.Errorf(
-				err,
-				`can't write tar header for fileName: '%s'`, fileName,
-			)
-		}
-
-		fileToArchive, err := os.Open(fileName)
-		if err != nil {
-			return hierr.Errorf(
-				err,
-				`can't open fileName for reading: '%s'`,
-				fileName,
-			)
-		}
-
-		_, err = io.Copy(archive, fileToArchive)
-		if err != nil {
-			return hierr.Errorf(
-				err,
-				`can't copy file to the archive: '%s'`,
-				fileName,
-			)
-		}
+		writeFileToArchive(fileName, archive, workDir)
 	}
 
 	debugf("closing archive stream, %d files sent", len(files))
@@ -243,6 +122,92 @@ func archiveFilesToWriter(target io.Writer, files []string) error {
 		return hierr.Errorf(
 			err,
 			`can't close tar stream`,
+		)
+	}
+
+	return nil
+}
+
+func writeFileToArchive(
+	fileName string,
+	archive *tar.Writer,
+	workDir string,
+) error {
+	fileInfo, err := os.Stat(fileName)
+
+	if err != nil {
+		return hierr.Errorf(
+			err,
+			`can't stat file for archiving: '%s`, fileName,
+		)
+	}
+
+	// avoid tar warnings about leading slash
+	tarFileName := fileName
+	if tarFileName[0] == '/' {
+		tarFileName = tarFileName[1:]
+
+		fileName, err = filepath.Rel(workDir, fileName)
+		if err != nil {
+			return hierr.Errorf(
+				err,
+				`can't make relative path from: '%s'`,
+				fileName,
+			)
+		}
+	}
+
+	header := &tar.Header{
+		Name: tarFileName,
+		Mode: int64(fileInfo.Sys().(*syscall.Stat_t).Mode),
+		Size: fileInfo.Size(),
+
+		Uid: int(fileInfo.Sys().(*syscall.Stat_t).Uid),
+		Gid: int(fileInfo.Sys().(*syscall.Stat_t).Gid),
+
+		ModTime: fileInfo.ModTime(),
+	}
+
+	debugf(
+		hierr.Errorf(
+			fmt.Sprintf(
+				"size: %d bytes; mode: %o; uid/gid: %d/%d; modtime: %s",
+				header.Size,
+				header.Mode,
+				header.Uid,
+				header.Gid,
+				header.ModTime,
+			),
+			`local file: %s; remote file: %s`,
+			fileName,
+			tarFileName,
+		).Error(),
+	)
+
+	err = archive.WriteHeader(header)
+
+	if err != nil {
+		return hierr.Errorf(
+			err,
+			`can't write tar header for fileName: '%s'`, fileName,
+		)
+	}
+
+	fileToArchive, err := os.Open(fileName)
+	if err != nil {
+		return hierr.Errorf(
+			err,
+			`can't open fileName for reading: '%s'`,
+			fileName,
+		)
+	}
+
+	_, err = io.Copy(archive, fileToArchive)
+	if err != nil {
+		return hierr.Errorf(
+			err,
+			`can't copy file to the archive: '%s'`,
+			fileName,
 		)
 	}
 
