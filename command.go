@@ -9,16 +9,18 @@ import (
 	"github.com/seletskiy/hierr"
 )
 
-func runCommand(
+func runRemoteExecution(
 	lockedNodes *distributedLock,
 	command []string,
-	verbosityLevel verbosity,
-) error {
-	commandString := joinCommand(command)
+) (*remoteExecution, error) {
+	var (
+		stdins      = []io.WriteCloser{}
+		remoteNodes = map[*distributedLockNode]*remoteExecutionNode{}
 
-	remoteCommands := map[*distributedLockNode]*remoteExecutionNode{}
+		commandString = joinCommand(command)
 
-	logMutex := &sync.Mutex{}
+		logMutex = &sync.Mutex{}
+	)
 
 	for _, node := range lockedNodes.nodes {
 		tracef(
@@ -34,7 +36,7 @@ func runCommand(
 			commandString,
 		)
 		if err != nil {
-			return hierr.Errorf(
+			return nil, hierr.Errorf(
 				err,
 				`can't create remote command`,
 			)
@@ -42,7 +44,7 @@ func runCommand(
 
 		var stdout io.WriteCloser
 		var stderr io.WriteCloser
-		switch verbosityLevel {
+		switch verbose {
 		default:
 			stdout = newLineFlushWriter(
 				logMutex,
@@ -89,15 +91,25 @@ func runCommand(
 		remoteCommand.SetStdout(stdout)
 		remoteCommand.SetStderr(stderr)
 
+		stdin, err := remoteCommand.StdinPipe()
+		if err != nil {
+			return nil, hierr.Errorf(
+				err,
+				`can't get stdin from archive receiver command`,
+			)
+		}
+
 		err = remoteCommand.Start()
 		if err != nil {
-			return hierr.Errorf(
+			return nil, hierr.Errorf(
 				err,
 				`can't start remote command`,
 			)
 		}
 
-		remoteCommands[node] = &remoteExecutionNode{
+		stdins = append(stdins, stdin)
+
+		remoteNodes[node] = &remoteExecutionNode{
 			node:    node,
 			command: remoteCommand,
 
@@ -106,21 +118,11 @@ func runCommand(
 		}
 	}
 
-	for node, remoteCommand := range remoteCommands {
-		err := remoteCommand.command.Wait()
-		_ = remoteCommand.stdout.Close()
-		_ = remoteCommand.stderr.Close()
-		if err != nil {
-			return hierr.Errorf(
-				err,
-				`%s can't wait for remote command to finish: '%s'`,
-				node.String(),
-				commandString,
-			)
-		}
-	}
+	return &remoteExecution{
+		stdin: multiWriteCloser{stdins},
 
-	return nil
+		nodes: remoteNodes,
+	}, nil
 }
 
 func joinCommand(command []string) string {

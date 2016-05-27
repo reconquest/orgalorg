@@ -6,7 +6,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sync"
 	"syscall"
 
 	"github.com/seletskiy/hierr"
@@ -16,89 +15,21 @@ func startArchiveReceivers(
 	lockedNodes *distributedLock,
 	rootDir string,
 ) (*remoteExecution, error) {
-	archiveReceiverCommandString := fmt.Sprintf(
-		`tar -x --verbose --directory="%s"`,
+	archiveReceiverCommand := []string{
+		`tar`, `-x`, `--verbose`, `--directory`,
 		rootDir,
-	)
-
-	unpackers := []io.WriteCloser{}
-
-	nodes := []remoteExecutionNode{}
-
-	logMutex := &sync.Mutex{}
-
-	for _, node := range lockedNodes.nodes {
-		tracef(
-			"%s",
-			hierr.Errorf(
-				archiveReceiverCommandString,
-				"%s starting archive receiver command",
-				node.String(),
-			).Error(),
-		)
-
-		archiveReceiverCommand, err := node.runner.Command(
-			archiveReceiverCommandString,
-		)
-		if err != nil {
-			return nil, hierr.Errorf(
-				err,
-				`can't create archive receiver command`,
-			)
-		}
-
-		stdin, err := archiveReceiverCommand.StdinPipe()
-		if err != nil {
-			return nil, hierr.Errorf(
-				err,
-				`can't get stdin from archive receiver command`,
-			)
-		}
-
-		unpackers = append(unpackers, stdin)
-
-		stdout := newLineFlushWriter(
-			logMutex,
-			newPrefixWriter(
-				newDebugWriter(logger),
-				node.String()+" {tar} <stdout> ",
-			),
-			true,
-		)
-
-		stderr := newLineFlushWriter(
-			logMutex,
-			newPrefixWriter(
-				newDebugWriter(logger),
-				node.String()+" {tar} <stderr> ",
-			),
-			true,
-		)
-
-		archiveReceiverCommand.SetStdout(stdout)
-		archiveReceiverCommand.SetStderr(stderr)
-
-		err = archiveReceiverCommand.Start()
-		if err != nil {
-			return nil, hierr.Errorf(
-				err,
-				`can't start archive receiver command`,
-			)
-		}
-
-		nodes = append(nodes, remoteExecutionNode{
-			node:    node,
-			command: archiveReceiverCommand,
-
-			stdout: stdout,
-			stderr: stderr,
-		})
 	}
 
-	return &remoteExecution{
-		stdin: multiWriteCloser{unpackers},
-		nodes: nodes,
-	}, nil
+	execution, err := runRemoteExecution(lockedNodes, archiveReceiverCommand)
+	if err != nil {
+		return nil, hierr.Errorf(
+			err,
+			`can't start tar extraction command: '%v'`,
+			archiveReceiverCommand,
+		)
+	}
+
+	return execution, nil
 }
 
 func archiveFilesToWriter(target io.Writer, files []string) error {

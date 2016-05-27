@@ -172,7 +172,10 @@ func main() {
 
 	verbose = parseVerbosity(args)
 
-	if verbose >= verbosityDebug {
+	logger.SetLevel(lorg.LevelWarning)
+
+	switch {
+	case verbose >= verbosityDebug:
 		logger.SetLevel(lorg.LevelDebug)
 	}
 
@@ -229,14 +232,27 @@ func command(args map[string]interface{}) error {
 		)
 	}
 
-	logger.Debugf(`global lock acquired on %d nodes`, len(cluster.nodes))
+	debugf(`global lock acquired on %d nodes`, len(cluster.nodes))
 
-	err = runCommand(cluster, commandToRun, parseVerbosity(args))
+	debugf(`running command`)
+
+	execution, err := runRemoteExecution(
+		cluster,
+		commandToRun,
+	)
 	if err != nil {
 		return hierr.Errorf(
 			err,
-			`can't run command on %d nodes`,
+			`can't run remote execution on %d nodes`,
 			len(cluster.nodes),
+		)
+	}
+
+	err = execution.wait()
+	if err != nil {
+		return hierr.Errorf(
+			err,
+			`remote execution failed`,
 		)
 	}
 

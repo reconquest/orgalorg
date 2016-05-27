@@ -24,7 +24,7 @@ func (closer multiWriteCloser) Close() error {
 
 	for _, closer := range closer.writers {
 		err := closer.Close()
-		if err != nil {
+		if err != nil && err != io.EOF {
 			errs = append(errs, err.Error())
 		}
 	}

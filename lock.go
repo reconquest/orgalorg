@@ -22,14 +22,14 @@ func acquireDistributedLock(
 			if err != nil {
 				errors <- hierr.Errorf(
 					err,
-					`can't create runner for address '%s'`,
+					`can't create runner for address: %s`,
 					nodeAddress,
 				)
 
 				return
 			}
 
-			debugf(`%4d/%d connection established: '%s'`,
+			debugf(`%4d/%d connection established: %s`,
 				atomic.AddInt64(&nodeIndex, 1),
 				len(addresses),
 				nodeAddress,
@@ -39,7 +39,7 @@ func acquireDistributedLock(
 			if err != nil {
 				errors <- hierr.Errorf(
 					err,
-					`can't add host to the global cluster lock: '%s'`,
+					`can't add host to the global cluster lock: %s`,
 					nodeAddress,
 				)
 

@@ -8,10 +8,18 @@ import (
 
 type remoteExecution struct {
 	stdin io.WriteCloser
-	nodes []remoteExecutionNode
+	nodes map[*distributedLockNode]*remoteExecutionNode
+}
+
+type remoteExecutionResult struct {
+	node *remoteExecutionNode
+
+	err error
 }
 
 func (execution *remoteExecution) wait() error {
+	tracef("waiting %d nodes to finish", len(execution.nodes))
+
 	err := execution.stdin.Close()
 	if err != nil {
 		return hierr.Errorf(
@@ -20,12 +28,25 @@ func (execution *remoteExecution) wait() error {
 		)
 	}
 
+	results := make(chan *remoteExecutionResult, 0)
 	for _, node := range execution.nodes {
-		err := node.wait()
-		if err != nil {
+		go func(node *remoteExecutionNode) {
+			results <- &remoteExecutionResult{node, node.wait()}
+		}(node)
+	}
+
+	for range execution.nodes {
+		result := <-results
+		if result.err != nil {
 			return hierr.Errorf(
-				err,
-				`wait finished with error`,
+				result.err,
+				`%s has finished with error`,
+				result.node.node.String(),
+			)
+		} else {
+			infof(
+				`%s has successfully finished execution`,
+				result.node.node.String(),
 			)
 		}
 	}
