@@ -121,11 +121,11 @@ Advanced options:
     -g --args <args>     Arguments to pass untouched to the post-action tool.
                           No modification will be done to the passed arg, so
                           take care about escaping.
-    -r --run-tool <exe>  Treat post-action as simple tool, which is not
+    -m --simple-tool     Treat post-action as simple tool, which is not
                           support specified protocol messages. No sync
                           is possible in that case and all stdout and stderr
                           will be passed untouched back to the orgalorg.
-                          Exclude '--post-action'.
+                          Excludes '--sync-tool'.
 
 Timeout options:
     --conn-timeout <t>   Remote host connection timeout in milliseconds.

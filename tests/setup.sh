@@ -1,18 +1,8 @@
-tests:clone "orgalorg" "bin/"
+:bootstrap-container() {
+    local container_name="$1"
 
-tests:debug "!!! spawning $(containers:count) containers"
+    tests:debug "[$container_name] bootstrapping container"
 
-tests:ensure containers:spawn
-
-tests:debug "!!! generating local key pair"
-
-tests:ensure :ssh:keygen-local "$(:ssh:get-key)"
-
-containers:get-list "containers"
-
-tests:debug "!!! bootstrapping containers"
-
-for container_name in "${containers[@]}"; do
     tests:ensure :ssh:keygen-remote "$container_name"
 
     tests:ensure containers:run "$container_name" -- \
@@ -27,11 +17,13 @@ for container_name in "${containers[@]}"; do
 
     tests:ensure :ssh:copy-id "$container_name" \
         "$(:ssh:get-username)" < "$(:ssh:get-key).pub"
-done
+}
 
-tests:debug "!!! running SSH daemon on containers"
+:start-ssh-daemon() {
+    local container_name="$1"
 
-for container_name in "${containers[@]}"; do
+    tests:debug "[$container_name] starting sshd..."
+
     tests:run-background "pid" :ssh:run-daemon "$container_name" "-D"
 
     while ! containers:is-active "$container_name"; do
@@ -39,16 +31,42 @@ for container_name in "${containers[@]}"; do
     done
 
     tests:debug "[$container_name] is online"
-done
+}
 
-containers:get-ip-list "ips"
+:wait-for-ssh-active() {
+    local container_name="$1"
+    local container_ip="$2"
 
-for container_index in "${!containers[@]}"; do
-    container_name=${containers[$container_index]}
-
-    while ! :ssh "${ips[$container_index]}" "true"; do
-        tests:debug "[$container_name] SSH daemon is not running"
+    while ! :ssh "$container_ip" "true"; do
+        tests:debug "[$container_name] sshd is offline"
     done
 
-    tests:debug "[$container_name] SSH daemon is online"
-done
+    tests:debug "[$container_name] sshs is online"
+}
+
+tests:debug "!!! setup"
+
+tests:clone "orgalorg" "bin/"
+
+tests:debug "!!! spawning $(containers:count) containers"
+
+containers:spawn "/bin/true"
+
+tests:debug "!!! generating local key pair"
+
+tests:ensure :ssh:keygen-local "$(:ssh:get-key)"
+
+tests:debug "!!! bootstrapping containers"
+
+containers:foreach :bootstrap-container
+
+tests:debug "!!! starting sshd instances"
+
+containers:foreach :start-ssh-daemon
+
+tests:debug "!!! waiting for sshd"
+
+containers:do :wait-for-ssh-active
+
+containers:get-list containers
+containers:get-ip-list ips

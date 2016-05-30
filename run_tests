@@ -23,15 +23,15 @@ test-runner:set-custom-opts \
 test-runner:handle-custom-opt() {
     case "$1" in
         --keep-containers)
-            :hastur:keep-containers
+            hastur:keep-containers
             ;;
 
         --keep-images)
-            :hastur:keep-images
+            hastur:keep-images
             ;;
 
         --containers-count)
-            :containers:set-count "$2"
+            containers:set-count "$2"
             ;;
     esac
 }
@@ -48,20 +48,21 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-progress:spinner:new _progress_spinner
-
-{
+:init() {
     :build:init
 
-    hastur:init openssh,pam,util-linux,tar
-
-} 2> >(progress:spinner:spin "$_progress_spinner" > /dev/null)
+    hastur:init openssh,pam,util-linux,tar,iproute2
+}
 
 :cleanup() {
     containers:wipe
 
     progress:spinner:stop "$_progress_spinner"
 }
+
+progress:spinner:new _progress_spinner
+
+:init 2> >(progress:spinner:spin "$_progress_spinner" > /dev/null)
 
 trap :cleanup EXIT
 

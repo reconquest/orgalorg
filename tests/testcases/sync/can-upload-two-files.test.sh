@@ -10,9 +10,13 @@ EOF
 
 tests:ensure :orgalorg-key -e -S test-file another-file -r /home/orgalorg/
 
-for container_name in "${containers[@]}"; do
+:check-uploaded-files() {
+    local container_name="$1"
+
     containers:get-rootfs rootfs "$container_name"
 
     tests:assert-no-diff "$rootfs/home/orgalorg/test-file" "test-file"
     tests:assert-no-diff "$rootfs/home/orgalorg/another-file" "another-file"
-done
+}
+
+containers:foreach :check-uploaded-files
