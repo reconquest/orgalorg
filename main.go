@@ -82,11 +82,10 @@ Options:
                           [default: $HOME/.ssh/id_rsa]
     -p --password        Enable password authentication.
                           Exclude '-k' option.
-    -x --no-sudo         Do not try to obtain root (via 'sudo -i').
-                          By default, orgalorg will try to obtain root and do
-                          all actions from root, because it's most common use
-                          case. To prevent that behaviour, this option can be
-                          used.
+    -x --sudo            Obtain root via 'sudo -n'.
+                          By default, orgalorg will not obtain root and do
+                          all actions from specified user. To change that
+                          behaviour, this option can be used.
     -t --no-lock-abort   Try to obtain global lock, but only print warning if
                           it cannot be done, do not stop execution.
     -r --root <root>     Specify root dir to extract files into.
@@ -207,7 +206,12 @@ func command(args map[string]interface{}) error {
 		lockFile     = args["--lock-file"].(string)
 		commandToRun = args["<command>"].([]string)
 		stdin, _     = args["--stdin"].(string)
+		sudo         = args["--sudo"].(bool)
 	)
+
+	if sudo {
+		commandToRun = append([]string{"sudo", "-n"}, commandToRun...)
+	}
 
 	runners, err := createRunnerFactory(args)
 	if err != nil {
@@ -365,12 +369,15 @@ func upload(
 	filesList []string,
 ) error {
 	var (
-		rootDir = args["--root"].(string)
+		rootDir     = args["--root"].(string)
+		preserveUID = !args["--no-preserve-uid"].(bool)
+		preserveGID = !args["--no-preserve-gid"].(bool)
+		sudo        = args["--sudo"].(bool)
 	)
 
 	logger.Infof(`file upload started into: '%s'`, rootDir)
 
-	receivers, err := startArchiveReceivers(cluster, rootDir)
+	receivers, err := startArchiveReceivers(cluster, rootDir, sudo)
 	if err != nil {
 		return hierr.Errorf(
 			err,
@@ -378,7 +385,12 @@ func upload(
 		)
 	}
 
-	err = archiveFilesToWriter(receivers.stdin, filesList)
+	err = archiveFilesToWriter(
+		receivers.stdin,
+		filesList,
+		preserveUID,
+		preserveGID,
+	)
 	if err != nil {
 		return hierr.Errorf(
 			err,

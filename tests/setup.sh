@@ -7,12 +7,14 @@
 
     tests:ensure containers:run "$container_name" -- \
         /usr/bin/sh -c "
-            /usr/bin/useradd -G wheel $(:ssh:get-username)
+            useradd -G wheel $(:ssh:get-username)
 
-            /usr/bin/mkdir -p \\\\
+            sed -r \"/wheel.*NOPASSWD/s/^#//\" -i /etc/sudoers
+
+            mkdir -p \\\\
                 /home/$(:ssh:get-username)/.ssh
 
-            /usr/bin/chown -R \\\\
+            chown -R \\\\
                 $(:ssh:get-username): /home/$(:ssh:get-username)" \
 
     tests:ensure :ssh:copy-id "$container_name" \

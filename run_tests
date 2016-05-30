@@ -51,7 +51,7 @@ fi
 :init() {
     :build:init
 
-    hastur:init openssh,pam,util-linux,tar,iproute2
+    hastur:init openssh,pam,util-linux,tar,iproute2,sudo,sed
 }
 
 :cleanup() {

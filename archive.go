@@ -14,11 +14,21 @@ import (
 func startArchiveReceivers(
 	lockedNodes *distributedLock,
 	rootDir string,
+	sudo bool,
 ) (*remoteExecution, error) {
-	archiveReceiverCommand := []string{
-		`tar`, `-x`, `--verbose`, `--directory`,
-		rootDir,
+	archiveReceiverCommand := []string{}
+
+	if sudo {
+		archiveReceiverCommand = []string{`sudo`, `-n`}
 	}
+
+	archiveReceiverCommand = append(
+		archiveReceiverCommand,
+		[]string{
+			`tar`, `-x`, `--verbose`, `--directory`,
+			rootDir,
+		}...,
+	)
 
 	execution, err := runRemoteExecution(lockedNodes, archiveReceiverCommand)
 	if err != nil {
@@ -32,7 +42,11 @@ func startArchiveReceivers(
 	return execution, nil
 }
 
-func archiveFilesToWriter(target io.Writer, files []string) error {
+func archiveFilesToWriter(
+	target io.Writer,
+	files []string,
+	preserveUID, preserveGID bool,
+) error {
 	workDir, err := os.Getwd()
 	if err != nil {
 		return hierr.Errorf(
@@ -50,7 +64,13 @@ func archiveFilesToWriter(target io.Writer, files []string) error {
 			fileName,
 		)
 
-		writeFileToArchive(fileName, archive, workDir)
+		writeFileToArchive(
+			fileName,
+			archive,
+			workDir,
+			preserveUID,
+			preserveGID,
+		)
 	}
 
 	tracef("closing archive stream, %d files sent", len(files))
@@ -70,6 +90,7 @@ func writeFileToArchive(
 	fileName string,
 	archive *tar.Writer,
 	workDir string,
+	preserveUID, preserveGID bool,
 ) error {
 	fileInfo, err := os.Stat(fileName)
 
@@ -100,10 +121,15 @@ func writeFileToArchive(
 		Mode: int64(fileInfo.Sys().(*syscall.Stat_t).Mode),
 		Size: fileInfo.Size(),
 
-		Uid: int(fileInfo.Sys().(*syscall.Stat_t).Uid),
-		Gid: int(fileInfo.Sys().(*syscall.Stat_t).Gid),
-
 		ModTime: fileInfo.ModTime(),
+	}
+
+	if preserveUID {
+		header.Uid = int(fileInfo.Sys().(*syscall.Stat_t).Uid)
+	}
+
+	if preserveGID {
+		header.Gid = int(fileInfo.Sys().(*syscall.Stat_t).Gid)
 	}
 
 	tracef(
