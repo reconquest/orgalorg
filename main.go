@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/user"
 	"strings"
@@ -92,6 +93,7 @@ Options:
                           [default: /var/run/orgalorg/files/$RUNID]
     -u --user <user>     Username used for connecting to all hosts by default.
                           [default: $USER]
+    -i --stdin <file>    Pass specified file as input for the command.
     -q --quiet           Be quiet, in command mode do not use prefixes.
     -v --verbose         Print debug information on stderr.
     -V --version         Print program version.
@@ -204,6 +206,7 @@ func command(args map[string]interface{}) error {
 	var (
 		lockFile     = args["--lock-file"].(string)
 		commandToRun = args["<command>"].([]string)
+		stdin, _     = args["--stdin"].(string)
 	)
 
 	runners, err := createRunnerFactory(args)
@@ -246,6 +249,25 @@ func command(args map[string]interface{}) error {
 			`can't run remote execution on %d nodes`,
 			len(cluster.nodes),
 		)
+	}
+
+	if stdin != "" {
+		inputFile, err := os.Open(stdin)
+		if err != nil {
+			return hierr.Errorf(
+				err,
+				`can't open file for passing as stdin: '%s'`,
+				inputFile,
+			)
+		}
+
+		_, err = io.Copy(execution.stdin, inputFile)
+		if err != nil {
+			return hierr.Errorf(
+				err,
+				`can't copy input file to the execution processes`,
+			)
+		}
 	}
 
 	err = execution.wait()
