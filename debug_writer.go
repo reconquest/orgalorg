@@ -1,6 +1,8 @@
 package main
 
 import (
+	"strings"
+
 	"github.com/kovetskiy/lorg"
 )
 
@@ -15,7 +17,7 @@ func newDebugWriter(log *lorg.Log) debugWriter {
 }
 
 func (writer debugWriter) Write(data []byte) (int, error) {
-	writer.log.Debug(string(data))
+	writer.log.Debug(strings.TrimSuffix(string(data), "\n"))
 
 	return len(data), nil
 }

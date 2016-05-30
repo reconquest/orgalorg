@@ -55,19 +55,17 @@ func (writer lineFlushWriter) Write(data []byte) (int, error) {
 			}
 		}
 
+		var written int
 		if eof {
 			writer.buffer.Reset()
-			written, err := writer.buffer.WriteString(line)
-			writer.mutex.Unlock()
-			if err != nil {
-				return written, err
-			}
+			written, err = writer.buffer.WriteString(line)
 		} else {
-			written, err := writer.writer.Write([]byte(line))
-			writer.mutex.Unlock()
-			if err != nil {
-				return written, err
-			}
+			written, err = writer.writer.Write([]byte(line))
+		}
+
+		writer.mutex.Unlock()
+		if err != nil {
+			return written, err
 		}
 	}
 
@@ -86,4 +84,5 @@ func (writer lineFlushWriter) Close() error {
 
 	_, err := writer.writer.Write(writer.buffer.Bytes())
 	return err
+	return nil
 }

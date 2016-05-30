@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -67,7 +68,12 @@ Operation modes:
 
 Required options:
     -o <host>            Target host in format [<username>@]<domain>[:<port>].
-    -s                   Read hosts from stdin in addition to other flags.
+                          If value is started from '/' or from './', then it's
+                          considered file which should be used to read hosts
+                          from.
+    -s --read-stdin      Read hosts from stdin in addition to other flags.
+                          That flag is not compatible with '-p', use '-o',
+                          if you want to pass long hosts list.
 
 Options:
     -h --help            Show this help.
@@ -274,6 +280,8 @@ func command(args map[string]interface{}) error {
 		}
 	}
 
+	debugf(`waiting execution to finish`)
+
 	err = execution.wait()
 	if err != nil {
 		return hierr.Errorf(
@@ -457,11 +465,43 @@ func parseAddresses(args map[string]interface{}) ([]address, error) {
 	var (
 		defaultUser = args["--user"].(string)
 		hosts       = args["-o"].([]string)
+		fromStdin   = args["--read-stdin"].(bool)
 	)
+
+	var (
+		hostsToParse = []string{}
+	)
+
+	if fromStdin {
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+			hostsToParse = append(hostsToParse, scanner.Text())
+		}
+	}
+
+	for _, host := range hosts {
+		if strings.HasPrefix(host, "/") || strings.HasPrefix(host, "./") {
+			hostsFile, err := os.Open(host)
+			if err != nil {
+				return nil, hierr.Errorf(
+					err,
+					`can't open hosts file: '%s'`,
+					host,
+				)
+			}
+
+			scanner := bufio.NewScanner(hostsFile)
+			for scanner.Scan() {
+				hostsToParse = append(hostsToParse, scanner.Text())
+			}
+		} else {
+			hostsToParse = append(hostsToParse, host)
+		}
+	}
 
 	addresses := []address{}
 
-	for _, host := range hosts {
+	for _, host := range hostsToParse {
 		parsedAddress, err := parseAddress(
 			host, defaultUser, defaultSSHPort,
 		)

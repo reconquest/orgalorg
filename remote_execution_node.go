@@ -14,6 +14,7 @@ type remoteExecutionNode struct {
 	node    *distributedLockNode
 	command runcmd.CmdWorker
 
+	stdin  io.WriteCloser
 	stdout io.WriteCloser
 	stderr io.WriteCloser
 }
