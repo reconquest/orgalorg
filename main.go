@@ -108,7 +108,7 @@ Advanced options:
                           behavior.
     --no-preserve-uid    Do not preserve UIDs for transferred files.
     --no-preserve-gid    Do not preserve GIDs for transferred files.
-    --post-action <exe>  Run specified post-action tool on each remote node.
+    --sync-tool <tool>   Run specified post-action tool on each remote node.
                           Post-action tool should accept followin arguments:
                           * string prefix, that should be used to prefix all
                           stdout and stderr from the process; all unprefixed
@@ -121,8 +121,8 @@ Advanced options:
     -g --args <args>     Arguments to pass untouched to the post-action tool.
                           No modification will be done to the passed arg, so
                           take care about escaping.
-    -m --simple <exe>    Treat post-action as simple tool, which is not
-                          support specified protocol messages. No syncc
+    -r --run-tool <exe>  Treat post-action as simple tool, which is not
+                          support specified protocol messages. No sync
                           is possible in that case and all stdout and stderr
                           will be passed untouched back to the orgalorg.
                           Exclude '--post-action'.
@@ -311,7 +311,7 @@ func synchronize(args map[string]interface{}) error {
 	logger.Infof(`global lock acquired on %d nodes`, len(cluster.nodes))
 
 	if lockOnly {
-		logger.Info("-L|--stop-at-lock was passed, waiting for interrupt...")
+		logger.Warning("-L|--stop-at-lock was passed, waiting for interrupt...")
 
 		wait := sync.WaitGroup{}
 		wait.Add(1)
@@ -331,7 +331,7 @@ func synchronize(args map[string]interface{}) error {
 	logger.Info(`upload done`)
 
 	if uploadOnly {
-		logger.Info("-d|--stop-at-upload was passed, finishing...")
+		logger.Warning("-d|--stop-at-upload was passed, finishing...")
 	}
 
 	return nil

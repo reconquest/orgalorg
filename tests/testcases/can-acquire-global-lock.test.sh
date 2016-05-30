@@ -4,7 +4,7 @@ tests:run-background orgalorg_pid \
     tests:silence tests:pipe \
         :orgalorg-key --stop-at-lock '2>&1' '|' tee $orgalorg_output
 
-while ! cat "$orgalorg_output" 2>/dev/null | grep -qF "global lock acquired"
+while ! cat "$orgalorg_output" 2>/dev/null | grep -qF "waiting for interrupt"
 do
     tests:debug "[orgalorg] waiting for global lock..."
     sleep 0.1
