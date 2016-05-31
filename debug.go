@@ -33,3 +33,10 @@ func infof(format string, args ...interface{}) {
 
 	logger.Infof(format, args...)
 }
+
+func warningf(format string, args ...interface{}) {
+	loggerLock.Lock()
+	defer loggerLock.Unlock()
+
+	logger.Warningf(format, args...)
+}

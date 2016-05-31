@@ -48,6 +48,7 @@
     ssh \
         -oStrictHostKeyChecking=no \
         -oPasswordAuthentication=no \
+        -oControlPath=none \
         -i "$identity" \
         -l "$user" \
         "$ip" "${@}"

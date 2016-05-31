@@ -2,6 +2,7 @@ package main
 
 import (
 	"strings"
+	"time"
 
 	"github.com/seletskiy/hierr"
 	"github.com/theairkit/runcmd"
@@ -9,6 +10,8 @@ import (
 
 type distributedLock struct {
 	nodes []*distributedLockNode
+
+	noFail bool
 }
 
 func (lock *distributedLock) addNodeRunner(
@@ -32,9 +35,17 @@ func (lock *distributedLock) acquire(filename string) error {
 			node.String(),
 		)
 
-		_, err := node.lock(filename)
-
+		err := node.lock(filename)
 		if err != nil {
+			if lock.noFail {
+				warningf(
+					hierr.Errorf(
+						err,
+						`failed to acquire lock, but continuing execution`,
+					).Error(),
+				)
+			}
+
 			nodes := []string{}
 			for _, node := range lock.nodes {
 				nodes = append(nodes, node.String())
@@ -50,4 +61,10 @@ func (lock *distributedLock) acquire(filename string) error {
 	}
 
 	return nil
+}
+
+func (lock *distributedLock) runHeartbeats(period time.Duration) {
+	for _, node := range lock.nodes {
+		go heartbeat(period, node)
+	}
 }

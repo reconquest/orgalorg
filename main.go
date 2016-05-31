@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/user"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/docopt/docopt-go"
 	"github.com/kovetskiy/lorg"
+	"github.com/mattn/go-shellwords"
 	"github.com/seletskiy/hierr"
 )
 
@@ -30,44 +32,66 @@ and ownerships, then upload archive in parallel to the specified hosts and
 unpacks it in the temporary directory (see '-r'). No further actions will be
 done until all hosts unpacks the archive.
 
-If no '-d' flag specified, after upload post-action tool will be launched (
-see '--post-action'). Post-action tool can send stdout and stderr back to
-the orgalorg, but it need to be prefixed with special prefix, passed in the
-first argument. Additionally, post-action tool can separate it's actions into
-several phases, which should be synced across all cluster. To do it, tool
-should send 'SYNC' message to the stdout as soon as phase is done. Then, tool
-can receive 'SYNC <host>' back from orgalorg as many times as there are
-messages sent from other hosts. Tool can decide how soon it should continue
-based on the ammount received 'SYNC' messages.
+If '-S' flag specified, then sync command tool will be launched after upload
+(see '--sync-cmd'). Sync command tool can send stdout and stderr back to the
+orgalorg, but it need to be compatible with following procotol.
 
-Restrictions:
+First of all, sync command tool and orgalorg communicate through stdout/stdin.
+All lines, that are not match protocol will be printed untouched.
 
-    * only one authentication method can be used, and corresponding
-      authentication data used for all specified hosts;
+orgalorg first send hello message to the each running node, where '<prefix>'
+is an unique string
+
+    <prefix> HELLO
+
+All consequent communication must be prefixed by that prefix, followed by
+space.
+
+Then, orgalorg will pass nodes list to each running node by sending 'NODE'
+commands, where '<node>' is unique node identifier:
+
+    <prefix> NODE <node>
+
+After nodes list is exchausted, orgalorg will send 'START' marker, that means
+sync tool may proceed with execution.
+
+    <prefix> START
+
+Then, sync command tool can reply with 'SYNC' messages, that will be
+broadcasted to all connected nodes by orgalorg:
+
+    <prefix> SYNC <description>
+
+Broadcasted sync message will contain source node:
+
+    <prefix> SYNC <node> <description>
+
+Each node can decide, when to wait synchronizations, based on amount of
+received sync messages.
 
 Usage:
     orgalorg -h | --help
-    orgalorg [options] [-v]... (-o <host>...|-s) -S <files>... [-d|--stop-at-upload]
-    orgalorg [options] [-v]... (-o <host>...|-s) (-C|--command) [--] <command>...
-    orgalorg [options] [-v]... (-o <host>...|-s) (-L|--stop-at-lock)
+    orgalorg [options] [-v]... [-o <host>...] -r= -U <files>...
+    orgalorg [options] [-v]... [-o <host>...] [-r=] -S <files>...
+    orgalorg [options] [-v]... [-o <host>...] -C [--] <command>...
+    orgalorg [options] [-v]... [-o <host>...] -L
 
-Operation modes:
+Operation mode options:
     -S --sync            Sync.
-                          Synchronizes files on the specified hosts via 4-stage
+                          Synchronizes files on the specified hosts via 3-stage
                           process:
                           * global cluster locking (use -L to stop here);
                           * tar-ing files on local machine, transmitting and
-                            unpacking files to the intermediate directory
-                            (-d to stop here);
-                          * launching post-action tool such as gunter;
-    -L --stop-at-lock    Will stop right after locking, e.g. will not try to
+                          unpacking files to the intermediate directory
+                          (-U to stop here);
+                          * launching sync command tool such as gunter;
+    -L --lock            Will stop right after locking, e.g. will not try to
                           do sync whatsoever. Will keep lock until interrupted.
-    -d --stop-at-upload  Will lock and upload files into specified intermediate
-                          directory, then stop.
-    -C --command         Run specified command on all hosts.
+    -U --upload          Upload files to specified directory and exit.
+    -C --command         Run specified command on all hosts and exit.
 
 Required options:
-    -o <host>            Target host in format [<username>@]<domain>[:<port>].
+    -o --host <host>     Target host in format [<username>@]<domain>[:<port>].
                           If value is started from '/' or from './', then it's
                           considered file which should be used to read hosts
                           from.
@@ -77,11 +101,6 @@ Required options:
 
 Options:
     -h --help            Show this help.
-    -n --dry-run         Dry run: upload files on hosts and run gunter in dry
-                          run mode. No real files will be replaced. Temporary
-                          files will be deleted. Guntalina will be launched in
-                          dry mode too.
-    -b --no-backup       Do not backup of modified files on each target host.
     -k --key <identity>  Identity file (private key), which will be used for
                           authentication. If '-k' option is not used, then
                           password authentication will be used instead.
@@ -113,45 +132,39 @@ Advanced options:
                           then file will be uploaded into '/tmp/x' on the
                           remote hosts. That option switches off that
                           behavior.
-    --no-preserve-uid    Do not preserve UIDs for transferred files.
-    --no-preserve-gid    Do not preserve GIDs for transferred files.
-    --sync-tool <tool>   Run specified post-action tool on each remote node.
-                          Post-action tool should accept followin arguments:
-                          * string prefix, that should be used to prefix all
-                          stdout and stderr from the process; all unprefixed
-                          data will be treated as control commands.
-                          * path to directory which contain received files.
-                          * additional arguments from the '-g' flag.
-                          * --
-                          * hosts to sync, one per argument.
-                          [default: /usr/lib/orgalorg/post-action]
-    -g --args <args>     Arguments to pass untouched to the post-action tool.
+    -n --sync-cmd <cmd>  Run specified sync command tool on each remote node.
+                          Orgalorg will communicate with sync command tool via
+                          stdin. See 'Protocol commands' below.
+                          [default: /usr/lib/orgalorg/sync]
+    -g --args <args>     Arguments to pass untouched to the sync command tool.
                           No modification will be done to the passed arg, so
                           take care about escaping.
-    -m --simple-tool     Treat post-action as simple tool, which is not
+    -m --simple          Treat sync command as simple tool, which is not
                           support specified protocol messages. No sync
                           is possible in that case and all stdout and stderr
                           will be passed untouched back to the orgalorg.
-                          Excludes '--sync-tool'.
+    --no-preserve-uid    Do not preserve UIDs for transferred files.
+    --no-preserve-gid    Do not preserve GIDs for transferred files.
 
 Timeout options:
     --conn-timeout <t>   Remote host connection timeout in milliseconds.
                           [default: 10000]
     --send-timeout <t>   Remote host connection data sending timeout in
                           milliseconds. [default: 10000]
+                          NOTE: send timeout will be also used for the
+                          heartbeat messages, that orgalorg and connected nodes
+                          exchanges through synchronization process.
     --recv-timeout <t>   Remote host connection data receiving timeout in
                           milliseconds. [default: 10000]
     --keep-alive <t>     How long to keep connection keeped alive after session
-                          end in milliseconds. [default: 60000]
-Control commands:
-
-    SYNC                 Cause orgalorg to broadcast 'SYNC <host>' to all
-                          connected nodes.
+                          ends. [default: 10000]
 `
 
 const (
 	defaultSSHPort    = 22
 	sshPasswordPrompt = "Password: "
+
+	heartbeatTimeoutCoefficient = 0.8
 )
 
 var (
@@ -172,7 +185,7 @@ func main() {
 	usage := strings.Replace(usage, "$USER", currentUser.Username, -1)
 	usage = strings.Replace(usage, "$HOME", currentUser.HomeDir, -1)
 	usage = strings.Replace(usage, "$RUNID", generateRunID(), -1)
-	args, err := docopt.Parse(usage, nil, true, version, false)
+	args, err := docopt.Parse(usage, nil, true, version, true)
 	if err != nil {
 		panic(err)
 	}
@@ -184,21 +197,18 @@ func main() {
 	switch {
 	case verbose >= verbosityDebug:
 		logger.SetLevel(lorg.LevelDebug)
+	case verbose >= verbosityNormal:
+		logger.SetLevel(lorg.LevelInfo)
 	}
 
 	switch {
-	case args["-L"].(bool):
-		// because of docopt
-		args["--stop-at-lock"] = true
+	case args["--upload"].(bool):
 		fallthrough
-	case args["--stop-at-lock"].(bool):
+	case args["--lock"].(bool):
 		fallthrough
-	case args["-S"].(bool):
+	case args["--sync"].(bool):
 		err = synchronize(args)
-
 	case args["--command"].(bool):
-		fallthrough
-	case args["-C"].(bool):
 		err = command(args)
 	}
 
@@ -209,49 +219,35 @@ func main() {
 
 func command(args map[string]interface{}) error {
 	var (
-		lockFile     = args["--lock-file"].(string)
+		stdin, _ = args["--stdin"].(string)
+		sudo     = args["--sudo"].(bool)
+
 		commandToRun = args["<command>"].([]string)
-		stdin, _     = args["--stdin"].(string)
-		sudo         = args["--sudo"].(bool)
 	)
 
 	if sudo {
 		commandToRun = append([]string{"sudo", "-n"}, commandToRun...)
 	}
 
-	runners, err := createRunnerFactory(args)
+	cluster, err := connectAndLock(args)
 	if err != nil {
-		return hierr.Errorf(
-			err,
-			`can't create runner factory`,
-		)
+		return err
 	}
 
-	addresses, err := parseAddresses(args)
-	if err != nil {
-		return hierr.Errorf(
-			err,
-			`can't parse all specified addresses`,
-		)
-	}
+	return run(cluster, commandToRun, stdin)
+}
 
-	debugf(`connecting to %d nodes`, len(addresses))
-
-	cluster, err := acquireDistributedLock(lockFile, runners, addresses)
-	if err != nil {
-		return hierr.Errorf(
-			err,
-			`acquiring global cluster lock failed`,
-		)
-	}
-
-	debugf(`global lock acquired on %d nodes`, len(cluster.nodes))
-
+func run(
+	cluster *distributedLock,
+	commandToRun []string,
+	stdin string,
+) error {
 	debugf(`running command`)
 
 	execution, err := runRemoteExecution(
 		cluster,
 		commandToRun,
+		nil,
 	)
 	if err != nil {
 		return hierr.Errorf(
@@ -282,6 +278,14 @@ func command(args map[string]interface{}) error {
 
 	debugf(`waiting execution to finish`)
 
+	err = execution.stdin.Close()
+	if err != nil {
+		return hierr.Errorf(
+			err,
+			`can't close stdin`,
+		)
+	}
+
 	err = execution.wait()
 	if err != nil {
 		return hierr.Errorf(
@@ -295,57 +299,43 @@ func command(args map[string]interface{}) error {
 
 func synchronize(args map[string]interface{}) error {
 	var (
-		lockOnly    = args["--stop-at-lock"].(bool)
-		uploadOnly  = args["--stop-at-upload"].(bool) || args["-d"].(bool)
-		fileSources = args["<files>"].([]string)
+		lockOnly    = args["--lock"].(bool)
+		uploadOnly  = args["--upload"].(bool)
 		relative    = args["--relative"].(bool)
-		lockFile    = args["--lock-file"].(string)
+		syncCmd     = args["--sync-cmd"].(string)
+		isSimpleCmd = args["--simple"].(bool)
+		stdin, _    = args["--stdin"].(string)
+
+		fileSources = args["<files>"].([]string)
 	)
 
-	addresses, err := parseAddresses(args)
-	if err != nil {
-		return hierr.Errorf(
-			err,
-			`can't parse all specified addresses`,
-		)
-	}
+	var (
+		filesList = []string{}
 
-	filesList := []string{}
+		err error
+	)
+
 	if !lockOnly {
-		logger.Infof(`building files list from %d sources`, len(fileSources))
+		debugf(`building files list from %d sources`, len(fileSources))
 		filesList, err = getFilesList(relative, fileSources...)
 		if err != nil {
 			return hierr.Errorf(
 				err,
-				`can't obtain files list to sync from localhost`,
+				`can't build files list`,
 			)
 		}
 
-		logger.Infof(`file list contains %d files`, len(filesList))
+		debugf(`file list contains %d files`, len(filesList))
+		tracef(`files to upload: %+v`, filesList)
 	}
 
-	runners, err := createRunnerFactory(args)
+	cluster, err := connectAndLock(args)
 	if err != nil {
-		return hierr.Errorf(
-			err,
-			`can't create runner factory`,
-		)
+		return err
 	}
-
-	infof(`connecting to %d nodes`, len(addresses))
-
-	cluster, err := acquireDistributedLock(lockFile, runners, addresses)
-	if err != nil {
-		return hierr.Errorf(
-			err,
-			`acquiring global cluster lock failed`,
-		)
-	}
-
-	logger.Infof(`global lock acquired on %d nodes`, len(cluster.nodes))
 
 	if lockOnly {
-		logger.Warning("-L|--stop-at-lock was passed, waiting for interrupt...")
+		warningf("-L|--lock was passed, waiting for interrupt...")
 
 		wait := sync.WaitGroup{}
 		wait.Add(1)
@@ -362,10 +352,33 @@ func synchronize(args map[string]interface{}) error {
 		)
 	}
 
-	logger.Info(`upload done`)
+	tracef(`upload done`)
 
 	if uploadOnly {
-		logger.Warning("-d|--stop-at-upload was passed, finishing...")
+		return nil
+	}
+
+	tracef(`starting sync tool`)
+
+	syncCmdParsed, err := shellwords.NewParser().Parse(syncCmd)
+	if err != nil {
+		return hierr.Errorf(
+			err,
+			`can't parse sync tool command: '%s'`,
+			syncCmd,
+		)
+	}
+
+	if isSimpleCmd {
+		return run(cluster, syncCmdParsed, stdin)
+	} else {
+		err := runSyncProtocol(cluster, syncCmdParsed)
+		if err != nil {
+			return hierr.Errorf(
+				err,
+				`failed to run sync command`,
+			)
+		}
 	}
 
 	return nil
@@ -377,13 +390,14 @@ func upload(
 	filesList []string,
 ) error {
 	var (
-		rootDir     = args["--root"].(string)
+		rootDir = args["--root"].(string)
+		sudo    = args["--sudo"].(bool)
+
 		preserveUID = !args["--no-preserve-uid"].(bool)
 		preserveGID = !args["--no-preserve-gid"].(bool)
-		sudo        = args["--sudo"].(bool)
 	)
 
-	logger.Infof(`file upload started into: '%s'`, rootDir)
+	debugf(`file upload started into: '%s'`, rootDir)
 
 	receivers, err := startArchiveReceivers(cluster, rootDir, sudo)
 	if err != nil {
@@ -406,16 +420,77 @@ func upload(
 		)
 	}
 
-	logger.Info(`waiting file upload to finish`)
+	tracef(`waiting file upload to finish`)
+
+	err = receivers.stdin.Close()
+	if err != nil {
+		return hierr.Errorf(
+			err,
+			`can't close archive receiver stdin`,
+		)
+	}
+
 	err = receivers.wait()
 	if err != nil {
 		return hierr.Errorf(
 			err,
-			`can't finish files archive`,
+			`archive upload failed`,
 		)
 	}
 
 	return nil
+}
+
+func connectAndLock(args map[string]interface{}) (*distributedLock, error) {
+	var (
+		lockFile    = args["--lock-file"].(string)
+		sendTimeout = args["--send-timeout"].(string)
+		noLockFail  = args["--no-lock-abort"].(bool)
+	)
+
+	addresses, err := parseAddresses(args)
+	if err != nil {
+		return nil, hierr.Errorf(
+			err,
+			`can't parse all specified addresses`,
+		)
+	}
+
+	runners, err := createRunnerFactory(args)
+	if err != nil {
+		return nil, hierr.Errorf(
+			err,
+			`can't create runner factory`,
+		)
+	}
+
+	debugf(`connecting to %d nodes`, len(addresses))
+
+	cluster, err := acquireDistributedLock(
+		lockFile,
+		runners,
+		addresses,
+		noLockFail,
+	)
+	if err != nil {
+		return nil, hierr.Errorf(
+			err,
+			`acquiring global cluster lock failed`,
+		)
+	}
+
+	debugf(`global lock acquired on %d nodes`, len(cluster.nodes))
+
+	// err already checked in the timeouts.go
+	heartbeatMilliseconds, _ := strconv.Atoi(sendTimeout)
+
+	cluster.runHeartbeats(
+		time.Duration(
+			float64(heartbeatMilliseconds)*heartbeatTimeoutCoefficient,
+		) * time.Millisecond,
+	)
+
+	return cluster, nil
 }
 
 func createRunnerFactory(args map[string]interface{}) (runnerFactory, error) {
@@ -464,7 +539,7 @@ func createRunnerFactory(args map[string]interface{}) (runnerFactory, error) {
 func parseAddresses(args map[string]interface{}) ([]address, error) {
 	var (
 		defaultUser = args["--user"].(string)
-		hosts       = args["-o"].([]string)
+		hosts       = args["--host"].([]string)
 		fromStdin   = args["--read-stdin"].(bool)
 	)
 

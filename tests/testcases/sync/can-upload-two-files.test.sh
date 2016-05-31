@@ -8,7 +8,7 @@ line3
 line5
 EOF
 
-tests:ensure :orgalorg-key -e -S test-file another-file -r /home/orgalorg/
+tests:ensure :orgalorg:with-key -e -r /home/orgalorg/ -U test-file another-file
 
 :check-uploaded-files() {
     local container_name="$1"

@@ -1,17 +1,26 @@
 package main
 
-import "github.com/seletskiy/hierr"
-import "sync/atomic"
+import (
+	"sync"
+	"sync/atomic"
+
+	"github.com/seletskiy/hierr"
+)
 
 func acquireDistributedLock(
 	lockFile string,
 	runnerFactory runnerFactory,
 	addresses []address,
 ) (*distributedLock, error) {
-	lock := &distributedLock{}
+	var (
+		lock = &distributedLock{}
 
-	nodeIndex := int64(0)
-	errors := make(chan error, 0)
+		nodeIndex = int64(0)
+		errors    = make(chan error, 0)
+
+		mutex = &sync.Mutex{}
+	)
+
 	for _, nodeAddress := range addresses {
 		go func(nodeAddress address) {
 			tracef(`connecting to address: '%s'`,
@@ -35,7 +44,11 @@ func acquireDistributedLock(
 				nodeAddress,
 			)
 
-			err = lock.addNodeRunner(runner, nodeAddress)
+			mutex.Lock()
+			{
+				err = lock.addNodeRunner(runner, nodeAddress)
+			}
+			mutex.Unlock()
 			if err != nil {
 				errors <- hierr.Errorf(
 					err,

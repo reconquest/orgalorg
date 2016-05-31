@@ -20,14 +20,6 @@ type remoteExecutionResult struct {
 func (execution *remoteExecution) wait() error {
 	tracef("waiting %d nodes to finish", len(execution.nodes))
 
-	err := execution.stdin.Close()
-	if err != nil {
-		return hierr.Errorf(
-			err,
-			`can't close stdin stream`,
-		)
-	}
-
 	results := make(chan *remoteExecutionResult, 0)
 	for _, node := range execution.nodes {
 		go func(node *remoteExecutionNode) {
@@ -44,7 +36,7 @@ func (execution *remoteExecution) wait() error {
 				result.node.node.String(),
 			)
 		} else {
-			infof(
+			tracef(
 				`%s has successfully finished execution`,
 				result.node.node.String(),
 			)

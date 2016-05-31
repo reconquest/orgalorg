@@ -43,7 +43,18 @@
         tests:debug "[$container_name] sshd is offline"
     done
 
-    tests:debug "[$container_name] sshs is online"
+    tests:debug "[$container_name] sshd is online"
+}
+
+:install-sync-command-into-container() {
+    local file_name="$1"
+    local container_name="$2"
+
+    containers:get-rootfs rootfs "$container_name"
+
+    tests:ensure sudo mkdir -p "$rootfs/usr/lib/orgalorg/"
+    tests:ensure sudo cp "$file_name" "$rootfs/usr/lib/orgalorg/"
+    tests:ensure sudo chmod +x "$rootfs/usr/lib/orgalorg/sync"
 }
 
 tests:debug "!!! setup"

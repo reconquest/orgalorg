@@ -6,8 +6,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sync"
 	"syscall"
 
+	"github.com/reconquest/go-lineflushwriter"
+	"github.com/reconquest/go-prefixwriter"
 	"github.com/seletskiy/hierr"
 )
 
@@ -25,12 +28,33 @@ func startArchiveReceivers(
 	archiveReceiverCommand = append(
 		archiveReceiverCommand,
 		[]string{
-			`tar`, `-x`, `--verbose`, `--directory`,
-			rootDir,
+			`tar`, `-x`, `--directory`, rootDir,
 		}...,
 	)
 
-	execution, err := runRemoteExecution(lockedNodes, archiveReceiverCommand)
+	if verbose >= verbosityDebug {
+		archiveReceiverCommand = append(archiveReceiverCommand, `--verbose`)
+	}
+
+	logMutex := &sync.Mutex{}
+
+	execution, err := runRemoteExecution(
+		lockedNodes,
+		archiveReceiverCommand,
+		func(node *remoteExecutionNode) {
+			node.stdout = lineflushwriter.New(
+				prefixwriter.New(node.stdout, "{tar} "),
+				logMutex,
+				true,
+			)
+
+			node.stderr = lineflushwriter.New(
+				prefixwriter.New(node.stderr, "{tar} "),
+				logMutex,
+				true,
+			)
+		},
+	)
 	if err != nil {
 		return nil, hierr.Errorf(
 			err,
@@ -43,7 +67,7 @@ func startArchiveReceivers(
 }
 
 func archiveFilesToWriter(
-	target io.Writer,
+	target io.WriteCloser,
 	files []string,
 	preserveUID, preserveGID bool,
 ) error {
@@ -57,20 +81,27 @@ func archiveFilesToWriter(
 
 	archive := tar.NewWriter(target)
 	for fileIndex, fileName := range files {
-		logger.Infof(
+		infof(
 			"%5d/%d sending file: '%s'",
 			fileIndex+1,
 			len(files),
 			fileName,
 		)
 
-		writeFileToArchive(
+		err := writeFileToArchive(
 			fileName,
 			archive,
 			workDir,
 			preserveUID,
 			preserveGID,
 		)
+		if err != nil {
+			return hierr.Errorf(
+				err,
+				`can't write file to archive: '%s'`,
+				fileName,
+			)
+		}
 	}
 
 	tracef("closing archive stream, %d files sent", len(files))
@@ -80,6 +111,14 @@ func archiveFilesToWriter(
 		return hierr.Errorf(
 			err,
 			`can't close tar stream`,
+		)
+	}
+
+	err = target.Close()
+	if err != nil {
+		return hierr.Errorf(
+			err,
+			`can't close target stdin`,
 		)
 	}
 

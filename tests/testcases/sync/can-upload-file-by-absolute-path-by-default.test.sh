@@ -5,7 +5,7 @@ line1
 line2
 EOF
 
-tests:ensure :orgalorg-key -S dir -r /home/orgalorg/
+tests:ensure :orgalorg:with-key -r /home/orgalorg/ -U dir
 
 :check-uploaded-file() {
     local container_name="$1"

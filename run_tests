@@ -15,27 +15,6 @@ include tests/ssh.sh
 include tests/build.sh
 include tests/orgalorg.sh
 
-test-runner:set-custom-opts \
-    --keep-containers \
-    --keep-images \
-    --containers-count:
-
-test-runner:handle-custom-opt() {
-    case "$1" in
-        --keep-containers)
-            hastur:keep-containers
-            ;;
-
-        --keep-images)
-            hastur:keep-images
-            ;;
-
-        --containers-count)
-            containers:set-count "$2"
-            ;;
-    esac
-}
-
 which brctl >/dev/null 2>&1
 if [ $? -ne 0 ]; then
     echo "missing dependency: brctl (bridge-utils)"
@@ -48,6 +27,34 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+test-runner:set-custom-opts \
+    --keep-containers \
+    --keep-images \
+    --containers-count:
+
+test-runner:handle-custom-opt() {
+    case "$1" in
+        --keep-containers)
+            containers:keep-containers
+            hastur:keep-images
+            ;;
+
+        --keep-images)
+            hastur:keep-images
+            ;;
+
+        --containers-count)
+            containers:set-count "$2"
+            ;;
+    esac
+}
+
+progress:spinner:new _progress_spinner
+
+test-runner:progress() {
+    progress:spinner:spin "$_progress_spinner" > /dev/null
+}
+
 :init() {
     :build:init
 
@@ -57,10 +64,10 @@ fi
 :cleanup() {
     containers:wipe
 
+    hastur:destroy-root
+
     progress:spinner:stop "$_progress_spinner"
 }
-
-progress:spinner:new _progress_spinner
 
 :init 2> >(progress:spinner:spin "$_progress_spinner" > /dev/null)
 

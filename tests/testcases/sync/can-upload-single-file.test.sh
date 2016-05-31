@@ -3,7 +3,7 @@ line1
 line2
 EOF
 
-tests:ensure :orgalorg-key -e -S test-file -r /home/orgalorg/
+tests:ensure :orgalorg:with-key -e  -r /home/orgalorg/ -U test-file
 
 :check-uploaded-file() {
     local container_name="$1"

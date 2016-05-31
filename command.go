@@ -6,12 +6,15 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/reconquest/go-lineflushwriter"
+	"github.com/reconquest/go-prefixwriter"
 	"github.com/seletskiy/hierr"
 )
 
 func runRemoteExecution(
 	lockedNodes *distributedLock,
 	command []string,
+	callback func(*remoteExecutionNode),
 ) (*remoteExecution, error) {
 	var (
 		stdins      = []io.WriteCloser{}
@@ -45,6 +48,23 @@ func runRemoteExecution(
 				return
 			}
 
+			if callback != nil {
+				callback(remoteNode)
+			}
+
+			remoteNode.command.SetStdout(remoteNode.stdout)
+			remoteNode.command.SetStderr(remoteNode.stderr)
+
+			err = remoteNode.command.Start()
+			if err != nil {
+				errors <- hierr.Errorf(
+					err,
+					`can't start remote command`,
+				)
+
+				return
+			}
+
 			nodesMapMutex.Lock()
 			{
 				stdins = append(stdins, remoteNode.stdin)
@@ -67,7 +87,7 @@ func runRemoteExecution(
 	}
 
 	return &remoteExecution{
-		stdin: multiWriteCloser{stdins},
+		stdin: &multiWriteCloser{stdins},
 
 		nodes: remoteNodes,
 	}, nil
@@ -89,65 +109,56 @@ func runRemoteExecutionNode(
 	var stdout io.WriteCloser
 	var stderr io.WriteCloser
 	switch verbose {
-	default:
-		stdout = newLineFlushWriter(
-			logMutex,
-			newPrefixWriter(
-				os.Stdout,
-				node.address.domain+" ",
-			),
-			true,
-		)
-
-		stderr = newLineFlushWriter(
-			logMutex,
-			newPrefixWriter(
-				os.Stderr,
-				node.address.domain+" ",
-			),
-			true,
-		)
-
 	case verbosityQuiet:
-		stdout = newLineFlushWriter(logMutex, os.Stdout, false)
-		stderr = newLineFlushWriter(logMutex, os.Stderr, false)
+		stdout = lineflushwriter.New(nopCloser{os.Stdout}, logMutex, false)
+		stderr = lineflushwriter.New(nopCloser{os.Stderr}, logMutex, false)
 
-	case verbosityDebug:
-		stdout = newLineFlushWriter(
+	case verbosityNormal:
+		stdout = lineflushwriter.New(
+			prefixwriter.New(
+				nopCloser{os.Stdout},
+				node.address.domain+" ",
+			),
 			logMutex,
-			newPrefixWriter(
+			true,
+		)
+
+		stderr = lineflushwriter.New(
+			prefixwriter.New(
+				nopCloser{os.Stderr},
+				node.address.domain+" ",
+			),
+			logMutex,
+			true,
+		)
+
+	default:
+		fallthrough
+	case verbosityDebug:
+		stdout = lineflushwriter.New(
+			prefixwriter.New(
 				newDebugWriter(logger),
 				node.String()+" {cmd} <stdout> ",
 			),
+			logMutex,
 			false,
 		)
 
-		stderr = newLineFlushWriter(
-			logMutex,
-			newPrefixWriter(
+		stderr = lineflushwriter.New(
+			prefixwriter.New(
 				newDebugWriter(logger),
 				node.String()+" {cmd} <stderr> ",
 			),
+			logMutex,
 			false,
 		)
 	}
-
-	remoteCommand.SetStdout(stdout)
-	remoteCommand.SetStderr(stderr)
 
 	stdin, err := remoteCommand.StdinPipe()
 	if err != nil {
 		return nil, hierr.Errorf(
 			err,
 			`can't get stdin from archive receiver command`,
-		)
-	}
-
-	err = remoteCommand.Start()
-	if err != nil {
-		return nil, hierr.Errorf(
-			err,
-			`can't start remote command`,
 		)
 	}
 

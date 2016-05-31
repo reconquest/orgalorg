@@ -21,3 +21,7 @@ func (writer debugWriter) Write(data []byte) (int, error) {
 
 	return len(data), nil
 }
+
+func (writer debugWriter) Close() error {
+	return nil
+}

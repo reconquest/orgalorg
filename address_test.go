@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestCanParseDomainValidDomainAddressWithDefaults(t *testing.T) {
+func TestParseAddress_ParseValidDomainAddressWithDefaults(t *testing.T) {
 	assert := assert.New(t)
 
 	tests := []struct {
@@ -38,13 +38,13 @@ func TestCanParseDomainValidDomainAddressWithDefaults(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		user, domain, port, err := parseAddress(
+		address, err := parseAddress(
 			test.Host, test.DefaultUser, test.DefaultPort,
 		)
 
 		assert.Nil(err)
-		assert.Equal(test.ExpectedUser, user)
-		assert.Equal(test.ExpectedPort, port)
-		assert.Equal(test.ExpectedDomain, domain)
+		assert.Equal(test.ExpectedUser, address.user)
+		assert.Equal(test.ExpectedPort, address.port)
+		assert.Equal(test.ExpectedDomain, address.domain)
 	}
 }

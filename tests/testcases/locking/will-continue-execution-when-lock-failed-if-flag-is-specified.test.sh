@@ -12,8 +12,9 @@ done
 
 tests:debug "[orgalorg] global lock has been acquired"
 
-tests:not tests:ensure :orgalorg:with-key --lock
-tests:assert-stderr "lock already"
+tests:not tests:ensure :orgalorg:with-key -C -- echo 1
+tests:assert-stderr "continuing"
+tests:assert-stdout "1"
 
 orgalorg_pid=$(tests:get-background-pid "$orgalorg")
 

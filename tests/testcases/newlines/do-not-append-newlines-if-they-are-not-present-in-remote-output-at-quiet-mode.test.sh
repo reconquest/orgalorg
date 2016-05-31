@@ -1,4 +1,4 @@
-tests:ensure :orgalorg-key -q -C -- echo -n hello
+tests:ensure :orgalorg:with-key -q -C -- echo -n hello
 
 tests:debug $(containers:count)
 
