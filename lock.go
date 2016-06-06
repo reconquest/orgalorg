@@ -11,9 +11,12 @@ func acquireDistributedLock(
 	lockFile string,
 	runnerFactory runnerFactory,
 	addresses []address,
+	noLockFail bool,
 ) (*distributedLock, error) {
 	var (
-		lock = &distributedLock{}
+		lock = &distributedLock{
+			noFail: noLockFail,
+		}
 
 		nodeIndex = int64(0)
 		errors    = make(chan error, 0)

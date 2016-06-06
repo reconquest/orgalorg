@@ -1,21 +1,9 @@
-orgalorg_output="$(tests:get-tmp-dir)/oralorg.stdout"
+tests:involve tests/testcases/locking/lock.sh
 
-tests:run-background orgalorg \
-    tests:silence tests:pipe \
-        :orgalorg:with-key --lock '2>&1' '|' tee $orgalorg_output
-
-while ! cat "$orgalorg_output" 2>/dev/null | grep -qF "waiting for interrupt"
-do
-    tests:debug "[orgalorg] waiting for global lock..."
-    sleep 0.1
-done
-
-tests:debug "[orgalorg] global lock has been acquired"
+:orgalorg:lock orgalorg_output orgalorg_pid
 
 tests:not tests:ensure :orgalorg:with-key --lock
 tests:assert-stderr "lock already"
-
-orgalorg_pid=$(tests:get-background-pid "$orgalorg")
 
 pkill -INT -P "$orgalorg_pid"
 

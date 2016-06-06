@@ -1,3 +1,5 @@
+go-test:set-prefix "$(tests:print-current-testcase | sed 's/\W/_/g')-"
+
 :bootstrap-container() {
     local container_name="$1"
 

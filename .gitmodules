@@ -16,3 +16,6 @@
 [submodule "vendor/github.com/reconquest/containers.bash"]
 	path = vendor/github.com/reconquest/containers.bash
 	url = https://github.com/reconquest/containers.bash
+[submodule "vendor/github.com/reconquest/go-test.bash"]
+	path = vendor/github.com/reconquest/go-test.bash
+	url = https://github.com/reconquest/go-test.bash

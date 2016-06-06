@@ -2,6 +2,7 @@ package main
 
 import (
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/seletskiy/hierr"
@@ -44,6 +45,8 @@ func (lock *distributedLock) acquire(filename string) error {
 						`failed to acquire lock, but continuing execution`,
 					).Error(),
 				)
+
+				continue
 			}
 
 			nodes := []string{}
@@ -63,8 +66,13 @@ func (lock *distributedLock) acquire(filename string) error {
 	return nil
 }
 
-func (lock *distributedLock) runHeartbeats(period time.Duration) {
+func (lock *distributedLock) runHeartbeats(
+	period time.Duration,
+	canceler *sync.Cond,
+) {
 	for _, node := range lock.nodes {
-		go heartbeat(period, node)
+		if node.connection != nil {
+			go heartbeat(period, node, canceler)
+		}
 	}
 }

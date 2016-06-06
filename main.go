@@ -111,7 +111,7 @@ Options:
                           By default, orgalorg will not obtain root and do
                           all actions from specified user. To change that
                           behaviour, this option can be used.
-    -t --no-lock-abort   Try to obtain global lock, but only print warning if
+    -t --no-lock-fail   Try to obtain global lock, but only print warning if
                           it cannot be done, do not stop execution.
     -r --root <root>     Specify root dir to extract files into.
                           [default: /var/run/orgalorg/files/$RUNID]
@@ -172,14 +172,20 @@ var (
 	verbose = verbosityNormal
 )
 
+var (
+	exit = os.Exit
+)
+
 func main() {
 	logger.SetFormat(lorg.NewFormat("* ${time} ${level:[%s]:right} %s"))
 	currentUser, err := user.Current()
 	if err != nil {
-		logger.Fatal(hierr.Errorf(
+		logger.Error(hierr.Errorf(
 			err,
 			`can't get current user`,
 		))
+
+		exit(1)
 	}
 
 	usage := strings.Replace(usage, "$USER", currentUser.Username, -1)
@@ -213,7 +219,9 @@ func main() {
 	}
 
 	if err != nil {
-		logger.Fatal(err)
+		logger.Error(err)
+
+		exit(1)
 	}
 }
 
@@ -229,7 +237,9 @@ func command(args map[string]interface{}) error {
 		commandToRun = append([]string{"sudo", "-n"}, commandToRun...)
 	}
 
-	cluster, err := connectAndLock(args)
+	canceler := sync.NewCond(&sync.Mutex{})
+
+	cluster, err := connectAndLock(args, canceler)
 	if err != nil {
 		return err
 	}
@@ -329,7 +339,9 @@ func synchronize(args map[string]interface{}) error {
 		tracef(`files to upload: %+v`, filesList)
 	}
 
-	cluster, err := connectAndLock(args)
+	canceler := sync.NewCond(&sync.Mutex{})
+
+	cluster, err := connectAndLock(args, canceler)
 	if err != nil {
 		return err
 	}
@@ -337,11 +349,11 @@ func synchronize(args map[string]interface{}) error {
 	if lockOnly {
 		warningf("-L|--lock was passed, waiting for interrupt...")
 
-		wait := sync.WaitGroup{}
-		wait.Add(1)
-		wait.Wait()
+		canceler.L.Lock()
+		canceler.Wait()
+		canceler.L.Unlock()
 
-		os.Exit(0)
+		exit(0)
 	}
 
 	err = upload(args, cluster, filesList)
@@ -441,11 +453,14 @@ func upload(
 	return nil
 }
 
-func connectAndLock(args map[string]interface{}) (*distributedLock, error) {
+func connectAndLock(
+	args map[string]interface{},
+	canceler *sync.Cond,
+) (*distributedLock, error) {
 	var (
 		lockFile    = args["--lock-file"].(string)
 		sendTimeout = args["--send-timeout"].(string)
-		noLockFail  = args["--no-lock-abort"].(bool)
+		noLockFail  = args["--no-lock-fail"].(bool)
 	)
 
 	addresses, err := parseAddresses(args)
@@ -487,7 +502,8 @@ func connectAndLock(args map[string]interface{}) (*distributedLock, error) {
 	cluster.runHeartbeats(
 		time.Duration(
 			float64(heartbeatMilliseconds)*heartbeatTimeoutCoefficient,
-		) * time.Millisecond,
+		)*time.Millisecond,
+		canceler,
 	)
 
 	return cluster, nil
