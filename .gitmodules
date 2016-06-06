@@ -1,21 +1,9 @@
-[submodule "vendor/github.com/reconquest/test-runner.bash"]
-	path = vendor/github.com/reconquest/test-runner.bash
-	url = https://github.com/reconquest/test-runner.bash
-[submodule "vendor/github.com/reconquest/progress.bash"]
-	path = vendor/github.com/reconquest/progress.bash
-	url = https://github.com/reconquest/progress.bash
 [submodule "vendor/github.com/reconquest/import.bash"]
-	path = vendor/github.com/reconquest/import.bash
-	url = https://github.com/reconquest/import.bash
-[submodule "vendor/github.com/reconquest/tests.sh"]
-	path = vendor/github.com/reconquest/tests.sh
-	url = https://github.com/reconquest/tests.sh
-[submodule "vendor/github.com/reconquest/hastur.bash"]
-	path = vendor/github.com/reconquest/hastur.bash
-	url = https://github.com/reconquest/hastur.bash
-[submodule "vendor/github.com/reconquest/containers.bash"]
-	path = vendor/github.com/reconquest/containers.bash
-	url = https://github.com/reconquest/containers.bash
+    path = vendor/github.com/reconquest/import.bash
+    url = https://github.com/reconquest/import.bash
 [submodule "vendor/github.com/reconquest/go-test.bash"]
-	path = vendor/github.com/reconquest/go-test.bash
-	url = https://github.com/reconquest/go-test.bash
+    path = vendor/github.com/reconquest/go-test.bash
+    url = https://github.com/reconquest/go-test.bash
+[submodule "vendor/github.com/reconquest/test-runner.bash"]
+    path = vendor/github.com/reconquest/test-runner.bash
+    url = https://github.com/reconquest/test-runner.bash
