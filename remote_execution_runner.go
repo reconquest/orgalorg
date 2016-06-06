@@ -33,14 +33,18 @@ func wrapCommandIntoShell(command string, shell string, args []string) string {
 		return command
 	}
 
+	command = strings.Replace(shell, `{}`, command, -1)
+
+	if len(args) == 0 {
+		return command
+	}
+
 	escapedArgs := []string{}
 	for _, arg := range args {
 		escapedArgs = append(escapedArgs, escapeCommandArgumentStrict(arg))
 	}
 
-	return strings.Replace(shell, `{}`, command, -1) +
-		" _ " +
-		strings.Join(escapedArgs, " ")
+	return command + " _ " + strings.Join(escapedArgs, " ")
 }
 
 func joinCommand(command []string) string {

@@ -271,8 +271,6 @@ func run(
 	runner *remoteExecutionRunner,
 	stdin string,
 ) error {
-	debugf(`running command`)
-
 	execution, err := runner.run(cluster, nil)
 	if err != nil {
 		return hierr.Errorf(
