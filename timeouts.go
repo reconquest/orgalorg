@@ -29,7 +29,7 @@ func makeTimeouts(args map[string]interface{}) (*runcmd.Timeouts, error) {
 	if err != nil {
 		return nil, hierr.Errorf(
 			err,
-			`can't convert specified connection timeout to number: '%s'`,
+			`can't convert specified send timeout to number: '%s'`,
 			sendTimeoutRaw,
 		)
 	}
@@ -38,7 +38,7 @@ func makeTimeouts(args map[string]interface{}) (*runcmd.Timeouts, error) {
 	if err != nil {
 		return nil, hierr.Errorf(
 			err,
-			`can't convert specified connection timeout to number: '%s'`,
+			`can't convert specified receive timeout to number: '%s'`,
 			receiveTimeoutRaw,
 		)
 	}
@@ -47,7 +47,7 @@ func makeTimeouts(args map[string]interface{}) (*runcmd.Timeouts, error) {
 	if err != nil {
 		return nil, hierr.Errorf(
 			err,
-			`can't convert specified connection timeout to number: '%s'`,
+			`can't convert specified keep alive time to number: '%s'`,
 			keepAliveRaw,
 		)
 	}
