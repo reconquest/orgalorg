@@ -15,32 +15,32 @@ import (
 )
 
 func startArchiveReceivers(
-	lockedNodes *distributedLock,
+	cluster *distributedLock,
 	rootDir string,
 	sudo bool,
 ) (*remoteExecution, error) {
-	archiveReceiverCommand := []string{}
+	command := []string{}
 
+	prefix := []string{}
 	if sudo {
-		archiveReceiverCommand = []string{`sudo`, `-n`}
+		prefix = []string{`sudo`, `-n`}
 	}
 
-	archiveReceiverCommand = append(
-		archiveReceiverCommand,
-		[]string{
-			`tar`, `-x`, `--directory`, rootDir,
-		}...,
-	)
+	command = append(command, prefix...)
+	command = append(command, `mkdir`, `-p`, rootDir, `&&`)
+	command = append(command, prefix...)
+	command = append(command, `tar`, `--directory`, rootDir, `-x`)
 
 	if verbose >= verbosityDebug {
-		archiveReceiverCommand = append(archiveReceiverCommand, `--verbose`)
+		command = append(command, `--verbose`)
 	}
 
 	logMutex := &sync.Mutex{}
 
-	execution, err := runRemoteExecution(
-		lockedNodes,
-		archiveReceiverCommand,
+	runner := &remoteExecutionRunner{command: command}
+
+	execution, err := runner.run(
+		cluster,
 		func(node *remoteExecutionNode) {
 			node.stdout = lineflushwriter.New(
 				prefixwriter.New(node.stdout, "{tar} "),
@@ -59,7 +59,7 @@ func startArchiveReceivers(
 		return nil, hierr.Errorf(
 			err,
 			`can't start tar extraction command: '%v'`,
-			archiveReceiverCommand,
+			command,
 		)
 	}
 

@@ -3,7 +3,6 @@ package main
 import (
 	"io"
 	"os"
-	"strings"
 	"sync"
 
 	"github.com/reconquest/go-lineflushwriter"
@@ -13,14 +12,12 @@ import (
 
 func runRemoteExecution(
 	lockedNodes *distributedLock,
-	command []string,
-	callback func(*remoteExecutionNode),
+	command string,
+	setupCallback func(*remoteExecutionNode),
 ) (*remoteExecution, error) {
 	var (
 		stdins      = []io.WriteCloser{}
 		remoteNodes = map[*distributedLockNode]*remoteExecutionNode{}
-
-		commandString = joinCommand(command)
 
 		logMutex      = &sync.Mutex{}
 		nodesMapMutex = &sync.Mutex{}
@@ -32,7 +29,7 @@ func runRemoteExecution(
 			tracef(
 				"%s",
 				hierr.Errorf(
-					commandString,
+					command,
 					"%s starting command",
 					node.String(),
 				).Error(),
@@ -40,7 +37,7 @@ func runRemoteExecution(
 
 			remoteNode, err := runRemoteExecutionNode(
 				node,
-				commandString,
+				command,
 				logMutex,
 			)
 			if err != nil {
@@ -48,8 +45,8 @@ func runRemoteExecution(
 				return
 			}
 
-			if callback != nil {
-				callback(remoteNode)
+			if setupCallback != nil {
+				setupCallback(remoteNode)
 			}
 
 			remoteNode.command.SetStdout(remoteNode.stdout)
@@ -170,17 +167,4 @@ func runRemoteExecutionNode(
 		stdout: stdout,
 		stderr: stderr,
 	}, nil
-}
-
-func joinCommand(command []string) string {
-	escapedParts := []string{}
-
-	for _, part := range command {
-		part = strings.Replace(part, `\`, `\\`, -1)
-		part = strings.Replace(part, ` `, `\ `, -1)
-
-		escapedParts = append(escapedParts, part)
-	}
-
-	return strings.Join(escapedParts, " ")
 }

@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/user"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -72,8 +73,8 @@ received sync messages.
 Usage:
     orgalorg -h | --help
     orgalorg [options] [-v]... [-o <host>...] -r= -U <files>...
-    orgalorg [options] [-v]... [-o <host>...] [-r=] -S <files>...
-    orgalorg [options] [-v]... [-o <host>...] -C [--] <command>...
+    orgalorg [options] [-v]... [-o <host>...] [-r=] [-g=]... -S <files>...
+    orgalorg [options] [-v]... [-o <host>...] [-r=] -C [--] <command>...
     orgalorg [options] [-v]... [-o <host>...] -L
 
 Operation mode options:
@@ -111,10 +112,12 @@ Options:
                           By default, orgalorg will not obtain root and do
                           all actions from specified user. To change that
                           behaviour, this option can be used.
-    -t --no-lock-fail   Try to obtain global lock, but only print warning if
+    -t --no-lock-fail    Try to obtain global lock, but only print warning if
                           it cannot be done, do not stop execution.
     -r --root <root>     Specify root dir to extract files into.
-                          [default: /var/run/orgalorg/files/$RUNID]
+                          By default, orgalorg will create temporary directory
+                          inside of '$ROOT'.
+                          Removal of that directory is up to sync tool.
     -u --user <user>     Username used for connecting to all hosts by default.
                           [default: $USER]
     -i --stdin <file>    Pass specified file as input for the command.
@@ -143,6 +146,12 @@ Advanced options:
                           support specified protocol messages. No sync
                           is possible in that case and all stdout and stderr
                           will be passed untouched back to the orgalorg.
+    --shell <shell>      Use following shell wrapper. '{}' will be replaced
+                          with properly escaped command. If empty, then no
+                          shell wrapper will be used. If any args are given
+                          using '-g', they will be appended to shell
+                          invocation.
+                          [default: bash -c $'{}']
     --no-preserve-uid    Do not preserve UIDs for transferred files.
     --no-preserve-gid    Do not preserve GIDs for transferred files.
 
@@ -165,6 +174,8 @@ const (
 	sshPasswordPrompt = "Password: "
 
 	heartbeatTimeoutCoefficient = 0.8
+
+	runsDirectory = "/var/run/orgalorg/"
 )
 
 var (
@@ -190,7 +201,7 @@ func main() {
 
 	usage := strings.Replace(usage, "$USER", currentUser.Username, -1)
 	usage = strings.Replace(usage, "$HOME", currentUser.HomeDir, -1)
-	usage = strings.Replace(usage, "$RUNID", generateRunID(), -1)
+	usage = strings.Replace(usage, "$ROOT", runsDirectory, -1)
 	args, err := docopt.Parse(usage, nil, true, version, true)
 	if err != nil {
 		panic(err)
@@ -215,7 +226,7 @@ func main() {
 	case args["--sync"].(bool):
 		err = synchronize(args)
 	case args["--command"].(bool):
-		err = command(args)
+		err = evaluate(args)
 	}
 
 	if err != nil {
@@ -225,16 +236,18 @@ func main() {
 	}
 }
 
-func command(args map[string]interface{}) error {
+func evaluate(args map[string]interface{}) error {
 	var (
-		stdin, _ = args["--stdin"].(string)
-		sudo     = args["--sudo"].(bool)
+		stdin, _   = args["--stdin"].(string)
+		rootDir, _ = args["--root"].(string)
+		sudo       = args["--sudo"].(bool)
+		shell      = args["--shell"].(string)
 
-		commandToRun = args["<command>"].([]string)
+		command = args["<command>"].([]string)
 	)
 
 	if sudo {
-		commandToRun = append([]string{"sudo", "-n"}, commandToRun...)
+		command = append([]string{"sudo", "-n"}, command...)
 	}
 
 	canceler := sync.NewCond(&sync.Mutex{})
@@ -244,21 +257,23 @@ func command(args map[string]interface{}) error {
 		return err
 	}
 
-	return run(cluster, commandToRun, stdin)
+	runner := &remoteExecutionRunner{
+		shell:     shell,
+		command:   command,
+		directory: rootDir,
+	}
+
+	return run(cluster, runner, stdin)
 }
 
 func run(
 	cluster *distributedLock,
-	commandToRun []string,
+	runner *remoteExecutionRunner,
 	stdin string,
 ) error {
 	debugf(`running command`)
 
-	execution, err := runRemoteExecution(
-		cluster,
-		commandToRun,
-		nil,
-	)
+	execution, err := runner.run(cluster, nil)
 	if err != nil {
 		return hierr.Errorf(
 			err,
@@ -309,12 +324,17 @@ func run(
 
 func synchronize(args map[string]interface{}) error {
 	var (
+		stdin, _    = args["--stdin"].(string)
+		rootDir, _  = args["--root"].(string)
 		lockOnly    = args["--lock"].(bool)
 		uploadOnly  = args["--upload"].(bool)
 		relative    = args["--relative"].(bool)
-		syncCmd     = args["--sync-cmd"].(string)
 		isSimpleCmd = args["--simple"].(bool)
-		stdin, _    = args["--stdin"].(string)
+
+		commandString = args["--sync-cmd"].(string)
+		commandArgs   = args["--args"].([]string)
+
+		shell = args["--shell"].(string)
 
 		fileSources = args["<files>"].([]string)
 	)
@@ -372,19 +392,26 @@ func synchronize(args map[string]interface{}) error {
 
 	tracef(`starting sync tool`)
 
-	syncCmdParsed, err := shellwords.NewParser().Parse(syncCmd)
+	command, err := shellwords.NewParser().Parse(commandString)
 	if err != nil {
 		return hierr.Errorf(
 			err,
 			`can't parse sync tool command: '%s'`,
-			syncCmd,
+			commandString,
 		)
 	}
 
+	runner := &remoteExecutionRunner{
+		shell:     shell,
+		command:   command,
+		args:      commandArgs,
+		directory: rootDir,
+	}
+
 	if isSimpleCmd {
-		return run(cluster, syncCmdParsed, stdin)
+		return run(cluster, runner, stdin)
 	} else {
-		err := runSyncProtocol(cluster, syncCmdParsed)
+		err := runSyncProtocol(cluster, runner)
 		if err != nil {
 			return hierr.Errorf(
 				err,
@@ -402,12 +429,16 @@ func upload(
 	filesList []string,
 ) error {
 	var (
-		rootDir = args["--root"].(string)
-		sudo    = args["--sudo"].(bool)
+		rootDir, _ = args["--root"].(string)
+		sudo       = args["--sudo"].(bool)
 
 		preserveUID = !args["--no-preserve-uid"].(bool)
 		preserveGID = !args["--no-preserve-gid"].(bool)
 	)
+
+	if rootDir == "" {
+		rootDir = filepath.Join(runsDirectory, generateRunID())
+	}
 
 	debugf(`file upload started into: '%s'`, rootDir)
 

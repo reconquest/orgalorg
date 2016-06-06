@@ -2,12 +2,14 @@ package main
 
 import "github.com/seletskiy/hierr"
 
-func runSyncProtocol(cluster *distributedLock, command []string) error {
+func runSyncProtocol(
+	cluster *distributedLock,
+	runner *remoteExecutionRunner,
+) error {
 	protocol := newSyncProtocol()
 
-	execution, err := runRemoteExecution(
+	execution, err := runner.run(
 		cluster,
-		command,
 		func(remoteNode *remoteExecutionNode) {
 			remoteNode.stdout = newProtocolNodeWriter(remoteNode, protocol)
 		},
