@@ -17,8 +17,6 @@ var (
 )
 
 type syncProtocol struct {
-	node *remoteExecutionNode
-
 	input  *bytes.Buffer
 	output io.WriteCloser
 
@@ -83,7 +81,7 @@ func (protocol *syncProtocol) IsSyncCommand(line string) bool {
 }
 
 func (protocol *syncProtocol) SendSync(
-	source *remoteExecutionNode,
+	source fmt.Stringer,
 	sync string,
 ) error {
 	data := strings.TrimSpace(

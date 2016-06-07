@@ -7,7 +7,7 @@ import (
 )
 
 func TestParseAddress_ParseValidDomainAddressWithDefaults(t *testing.T) {
-	assert := assert.New(t)
+	assertions := assert.New(t)
 
 	tests := []struct {
 		Host        string
@@ -38,13 +38,13 @@ func TestParseAddress_ParseValidDomainAddressWithDefaults(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		address, err := parseAddress(
+		parsed, err := parseAddress(
 			test.Host, test.DefaultUser, test.DefaultPort,
 		)
 
-		assert.Nil(err)
-		assert.Equal(test.ExpectedUser, address.user)
-		assert.Equal(test.ExpectedPort, address.port)
-		assert.Equal(test.ExpectedDomain, address.domain)
+		assertions.Nil(err)
+		assertions.Equal(test.ExpectedUser, parsed.user)
+		assertions.Equal(test.ExpectedPort, parsed.port)
+		assertions.Equal(test.ExpectedDomain, parsed.domain)
 	}
 }

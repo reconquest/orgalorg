@@ -35,12 +35,12 @@ func (execution *remoteExecution) wait() error {
 				`%s has finished with error`,
 				result.node.node.String(),
 			)
-		} else {
-			tracef(
-				`%s has successfully finished execution`,
-				result.node.node.String(),
-			)
 		}
+
+		tracef(
+			`%s has successfully finished execution`,
+			result.node.node.String(),
+		)
 	}
 
 	return nil

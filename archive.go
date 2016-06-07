@@ -88,7 +88,7 @@ func archiveFilesToWriter(
 			fileName,
 		)
 
-		err := writeFileToArchive(
+		err = writeFileToArchive(
 			fileName,
 			archive,
 			workDir,

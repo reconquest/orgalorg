@@ -193,20 +193,17 @@ var (
 
 func main() {
 	logger.SetFormat(lorg.NewFormat("* ${time} ${level:[%s]:right} %s"))
-	currentUser, err := user.Current()
+
+	usage, err := formatUsage(usage)
 	if err != nil {
 		logger.Error(hierr.Errorf(
 			err,
-			`can't get current user`,
+			`can't format usage`,
 		))
 
 		exit(1)
 	}
 
-	usage := strings.Replace(usage, "$USER", currentUser.Username, -1)
-	usage = strings.Replace(usage, "$HOME", currentUser.HomeDir, -1)
-	usage = strings.Replace(usage, "$ROOT", runsDirectory, -1)
-	usage = strings.Replace(usage, "$LOCK", defaultLockFile, -1)
 	args, err := docopt.Parse(usage, nil, true, version, true)
 	if err != nil {
 		panic(err)
@@ -214,14 +211,7 @@ func main() {
 
 	verbose = parseVerbosity(args)
 
-	logger.SetLevel(lorg.LevelWarning)
-
-	switch {
-	case verbose >= verbosityDebug:
-		logger.SetLevel(lorg.LevelDebug)
-	case verbose >= verbosityNormal:
-		logger.SetLevel(lorg.LevelInfo)
-	}
+	setLoggerVerbosity(verbose, logger)
 
 	err = checkOptionsCompatibility(args)
 	if err != nil {
@@ -249,6 +239,36 @@ func main() {
 
 		exit(1)
 	}
+}
+
+func setLoggerVerbosity(verbose verbosity, logger *lorg.Log) {
+	logger.SetLevel(lorg.LevelWarning)
+
+	switch {
+	case verbose >= verbosityDebug:
+		logger.SetLevel(lorg.LevelDebug)
+	case verbose >= verbosityNormal:
+		logger.SetLevel(lorg.LevelInfo)
+	}
+}
+
+func formatUsage(template string) (string, error) {
+	currentUser, err := user.Current()
+	if err != nil {
+		return "", hierr.Errorf(
+			err,
+			`can't get current user`,
+		)
+	}
+
+	usage := template
+
+	usage = strings.Replace(usage, "$USER", currentUser.Username, -1)
+	usage = strings.Replace(usage, "$HOME", currentUser.HomeDir, -1)
+	usage = strings.Replace(usage, "$ROOT", runsDirectory, -1)
+	usage = strings.Replace(usage, "$LOCK", defaultLockFile, -1)
+
+	return usage, nil
 }
 
 func checkOptionsCompatibility(args map[string]interface{}) error {
@@ -307,7 +327,9 @@ func run(
 	}
 
 	if stdin != "" {
-		inputFile, err := os.Open(stdin)
+		var inputFile *os.File
+
+		inputFile, err = os.Open(stdin)
 		if err != nil {
 			return hierr.Errorf(
 				err,
@@ -434,14 +456,14 @@ func synchronize(args map[string]interface{}) error {
 
 	if isSimpleCmd {
 		return run(cluster, runner, stdin)
-	} else {
-		err := runSyncProtocol(cluster, runner)
-		if err != nil {
-			return hierr.Errorf(
-				err,
-				`failed to run sync command`,
-			)
-		}
+	}
+
+	err = runSyncProtocol(cluster, runner)
+	if err != nil {
+		return hierr.Errorf(
+			err,
+			`failed to run sync command`,
+		)
 	}
 
 	return nil
@@ -589,7 +611,9 @@ func createRunnerFactory(args map[string]interface{}) (runnerFactory, error) {
 
 	switch {
 	case askPassword:
-		password, err := readPassword(sshPasswordPrompt)
+		var password string
+
+		password, err = readPassword(sshPasswordPrompt)
 		if err != nil {
 			return nil, hierr.Errorf(
 				err,
@@ -681,7 +705,7 @@ func generateRunID() string {
 func readPassword(prompt string) (string, error) {
 	fmt.Fprintf(os.Stderr, sshPasswordPrompt)
 
-	password, err := terminal.ReadPassword(int(syscall.Stdin))
+	password, err := terminal.ReadPassword(syscall.Stdin)
 	if err != nil {
 		return "", hierr.Errorf(
 			err,

@@ -30,7 +30,7 @@ func runSyncProtocol(
 	}
 
 	for _, node := range execution.nodes {
-		err := protocol.SendNode(node)
+		err = protocol.SendNode(node)
 		if err != nil {
 			return hierr.Errorf(
 				err,

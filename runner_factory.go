@@ -15,10 +15,10 @@ func createRemoteRunnerFactoryWithKey(
 	timeouts *runcmd.Timeouts,
 ) runnerFactory {
 	return func(address address) (runcmd.Runner, error) {
-		return runcmd.NewRemoteKeyAuthRunnerWithTimeouts(
-			address.user,
-			fmt.Sprintf("%s:%d", address.domain, address.port),
+		return createRunner(
+			runcmd.NewRemoteKeyAuthRunnerWithTimeouts,
 			key,
+			address,
 			*timeouts,
 		)
 	}
@@ -29,11 +29,29 @@ func createRemoteRunnerFactoryWithPassword(
 	timeouts *runcmd.Timeouts,
 ) runnerFactory {
 	return func(address address) (runcmd.Runner, error) {
-		return runcmd.NewRemotePassAuthRunnerWithTimeouts(
-			address.user,
-			fmt.Sprintf("%s:%d", address.domain, address.port),
+		return createRunner(
+			runcmd.NewRemotePassAuthRunnerWithTimeouts,
 			password,
+			address,
 			*timeouts,
 		)
 	}
+}
+
+func createRunner(
+	factory func(string, string, string, runcmd.Timeouts) (
+		*runcmd.Remote,
+		error,
+	),
+
+	key string,
+	address address,
+	timeouts runcmd.Timeouts,
+) (runcmd.Runner, error) {
+	return factory(
+		address.user,
+		fmt.Sprintf("%s:%d", address.domain, address.port),
+		key,
+		timeouts,
+	)
 }
