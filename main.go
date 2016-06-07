@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"golang.org/x/crypto/ssh/terminal"
@@ -72,10 +73,10 @@ received sync messages.
 
 Usage:
     orgalorg -h | --help
-    orgalorg [options] [-v]... [-o <host>...] -r= -U <files>...
-    orgalorg [options] [-v]... [-o <host>...] [-r=] [-g=]... -S <files>...
-    orgalorg [options] [-v]... [-o <host>...] [-r=] -C [--] <command>...
-    orgalorg [options] [-v]... [-o <host>...] -L
+    orgalorg [options] [-v]... (-o <host>...|-s) -r= -U <files>...
+    orgalorg [options] [-v]... (-o <host>...|-s) [-r=] [-g=]... -S <files>...
+    orgalorg [options] [-v]... (-o <host>...|-s) [-r=] -C [--] <command>...
+    orgalorg [options] [-v]... (-o <host>...|-s) -L
 
 Operation mode options:
     -S --sync            Sync.
@@ -103,11 +104,11 @@ Required options:
 Options:
     -h --help            Show this help.
     -k --key <identity>  Identity file (private key), which will be used for
-                          authentication. If '-k' option is not used, then
-                          password authentication will be used instead.
+                          authentication. This is default way of
+                          authentication.
                           [default: $HOME/.ssh/id_rsa]
     -p --password        Enable password authentication.
-                          Exclude '-k' option.
+                          Exclude '-k' and '-s' options.
     -x --sudo            Obtain root via 'sudo -n'.
                           By default, orgalorg will not obtain root and do
                           all actions from specified user. To change that
@@ -126,8 +127,9 @@ Options:
     -V --version         Print program version.
 
 Advanced options:
-    --lock-file <path>   File to put lock onto.
-                          [default: /]
+    --lock-file <path>   File to put lock onto. If not specified, value of '-r'
+                          will be used. If '-r' is not specified too, then
+                          use "$LOCK" as lock file.
     -e --relative        Upload files by relative path. By default, all
                           specified files will be uploaded on the target
                           hosts by absolute paths, e.g. if you running
@@ -138,8 +140,8 @@ Advanced options:
     -n --sync-cmd <cmd>  Run specified sync command tool on each remote node.
                           Orgalorg will communicate with sync command tool via
                           stdin. See 'Protocol commands' below.
-                          [default: /usr/lib/orgalorg/sync]
-    -g --args <args>     Arguments to pass untouched to the sync command tool.
+                          [default: /usr/lib/orgalorg/sync "${@}"]
+    -g --arg <arg>       Arguments to pass untouched to the sync command tool.
                           No modification will be done to the passed arg, so
                           take care about escaping.
     -m --simple          Treat sync command as simple tool, which is not
@@ -176,6 +178,8 @@ const (
 	heartbeatTimeoutCoefficient = 0.8
 
 	runsDirectory = "/var/run/orgalorg/"
+
+	defaultLockFile = "/"
 )
 
 var (
@@ -202,6 +206,7 @@ func main() {
 	usage := strings.Replace(usage, "$USER", currentUser.Username, -1)
 	usage = strings.Replace(usage, "$HOME", currentUser.HomeDir, -1)
 	usage = strings.Replace(usage, "$ROOT", runsDirectory, -1)
+	usage = strings.Replace(usage, "$LOCK", defaultLockFile, -1)
 	args, err := docopt.Parse(usage, nil, true, version, true)
 	if err != nil {
 		panic(err)
@@ -216,6 +221,16 @@ func main() {
 		logger.SetLevel(lorg.LevelDebug)
 	case verbose >= verbosityNormal:
 		logger.SetLevel(lorg.LevelInfo)
+	}
+
+	err = checkOptionsCompatibility(args)
+	if err != nil {
+		logger.Error(hierr.Errorf(
+			err,
+			`incompatible options given`,
+		))
+
+		exit(1)
 	}
 
 	switch {
@@ -234,6 +249,17 @@ func main() {
 
 		exit(1)
 	}
+}
+
+func checkOptionsCompatibility(args map[string]interface{}) error {
+	if args["--read-stdin"].(bool) && args["--password"].(bool) {
+		return fmt.Errorf(
+			`'-s' and '-p': password authentication is not possible ` +
+				`while reading hosts list from stdin`,
+		)
+	}
+
+	return nil
 }
 
 func evaluate(args map[string]interface{}) error {
@@ -330,7 +356,7 @@ func synchronize(args map[string]interface{}) error {
 		isSimpleCmd = args["--simple"].(bool)
 
 		commandString = args["--sync-cmd"].(string)
-		commandArgs   = args["--args"].([]string)
+		commandArgs   = args["--arg"].([]string)
 
 		shell = args["--shell"].(string)
 
@@ -487,7 +513,8 @@ func connectAndLock(
 	canceler *sync.Cond,
 ) (*distributedLock, error) {
 	var (
-		lockFile    = args["--lock-file"].(string)
+		lockFile, _ = args["--lock-file"].(string)
+		rootDir, _  = args["--root"].(string)
 		sendTimeout = args["--send-timeout"].(string)
 		noLockFail  = args["--no-lock-fail"].(bool)
 	)
@@ -509,6 +536,14 @@ func connectAndLock(
 	}
 
 	debugf(`connecting to %d nodes`, len(addresses))
+
+	if lockFile == "" {
+		if rootDir == "" {
+			lockFile = defaultLockFile
+		} else {
+			lockFile = rootDir
+		}
+	}
 
 	cluster, err := acquireDistributedLock(
 		lockFile,
@@ -644,14 +679,17 @@ func generateRunID() string {
 }
 
 func readPassword(prompt string) (string, error) {
-	fmt.Fprint(os.Stderr, prompt)
-	password, err := terminal.ReadPassword(0)
-	fmt.Fprintln(os.Stderr)
+	fmt.Fprintf(os.Stderr, sshPasswordPrompt)
+
+	password, err := terminal.ReadPassword(int(syscall.Stdin))
 	if err != nil {
 		return "", hierr.Errorf(
-			err, "can't read master password from terminal",
+			err,
+			`can't read password`,
 		)
 	}
+
+	fmt.Fprintln(os.Stderr)
 
 	return string(password), nil
 }

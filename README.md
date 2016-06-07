@@ -90,6 +90,8 @@ behaviour using `--simple` or `-m` flag, which will cause orgalorg to treat
 specified sync tool as simple shell command. User can even provide stdin
 to that program by using `--stdin` or `-i` flag.
 
+Tool can accept number of arguments, which can be specified  by using `-g` or
+`--arg` flags.
 
 # Synchronization Protocol
 
@@ -184,4 +186,55 @@ continue to the next step of execution process.
 <- ORGALORG:132464327653 SYNC [user@node1:22] phase 1 completed
 -> (from node2) ORGALORG:132464327653 SYNC phase 1 completed
 <- ORGALORG:132464327653 SYNC [user@node2:1234] phase 1 completed
+```
+
+
+# Example usages
+
+`-o <host>...` in later examples will mean any supported combination of
+host-specification arguments, like `-o host-a -o host-b`.
+
+## Obtaining global cluster lock
+
+```
+orgalorg -o <host>... -L
+```
+
+## Obtaining global cluster lock on custom directory
+
+```
+orgalorg -o <host>... -L -r /etc
+```
+
+## Evaluating command on hosts in parallel
+
+```
+orgalorg -o <host>... -C uptime
+```
+
+## Evaluating command on hosts given by stdin
+
+`axfr` is a tool of your choice for retrieving domain information from your
+infrastructure DNS.
+
+```
+axfr | grep phpnode | orgalorg -s -C uptime
+```
+
+## Evaluate command under root (passwordless sudo required)
+
+```
+orgalorg -o <host>... -x -C whoami
+```
+
+## Copying SSH public key for remote authentication
+
+```
+orgalorg -o <host>... -p -i ~/.ssh/id_rsa.pub -C tee -a ~/.ssh/authorized_keys
+```
+
+## Synchronizing configs and then reloading service (like nginx)
+
+```
+orgalorg -o <host>... -n 'systemctl reload nginx' -S /etc/nginx.conf
 ```
