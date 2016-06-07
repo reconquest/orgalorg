@@ -2,6 +2,7 @@
 
 Ultimate parallel cluster file synchronization tool.
 
+
 # What
 
 orgalorg provides easy way of synchronizing files acroess cluster.
@@ -20,6 +21,58 @@ perform following steps in order:
 So, orgalorg expected to work with third-party synchronization tool, that
 will do actual files relocation and can be quite intricate, **but orgalorg can
 work without that tool and perform simple files sync (more on this later)**.
+
+
+# Example usages
+
+`-o <host>...` in later examples will mean any supported combination of
+host-specification arguments, like `-o host-a -o host-b`.
+
+## Obtaining global cluster lock
+
+```
+orgalorg -o <host>... -L
+```
+
+## Obtaining global cluster lock on custom directory
+
+```
+orgalorg -o <host>... -L -r /etc
+```
+
+## Evaluating command on hosts in parallel
+
+```
+orgalorg -o <host>... -C uptime
+```
+
+## Evaluating command on hosts given by stdin
+
+`axfr` is a tool of your choice for retrieving domain information from your
+infrastructure DNS.
+
+```
+axfr | grep phpnode | orgalorg -s -C uptime
+```
+
+## Evaluate command under root (passwordless sudo required)
+
+```
+orgalorg -o <host>... -x -C whoami
+```
+
+## Copying SSH public key for remote authentication
+
+```
+orgalorg -o <host>... -p -i ~/.ssh/id_rsa.pub -C tee -a ~/.ssh/authorized_keys
+```
+
+## Synchronizing configs and then reloading service (like nginx)
+
+```
+orgalorg -o <host>... -xn 'systemctl reload nginx' -S /etc/nginx.conf
+```
+
 
 ## Global Cluster Lock
 
@@ -40,6 +93,7 @@ sync procedure.
 
 User can stop there by using `--lock` or `-L` flag, effectively transform
 orgalorg to the distributed locking tool.
+
 
 ## File Upload
 
@@ -73,6 +127,7 @@ remote nodes, `--sudo` or `-x` can be used to elevate to root before uploading
 files. It makes possible to login to the remote nodes under normal user and
 rewrite system files.
 
+
 ## Synchronization Tool
 
 After file upload orgalorg will execute synchronization tool
@@ -93,6 +148,7 @@ to that program by using `--stdin` or `-i` flag.
 Tool can accept number of arguments, which can be specified  by using `-g` or
 `--arg` flags.
 
+
 # Synchronization Protocol
 
 orgalorg will communicate with given sync tool using special sync protocol,
@@ -110,6 +166,7 @@ send by orgalorg in the hello message. All lines on stdout that are not match
 given prefix will be printed as is, untouched.
 
 Communcation begins from the hello message.
+
 
 ## Protocol
 
@@ -188,53 +245,3 @@ continue to the next step of execution process.
 <- ORGALORG:132464327653 SYNC [user@node2:1234] phase 1 completed
 ```
 
-
-# Example usages
-
-`-o <host>...` in later examples will mean any supported combination of
-host-specification arguments, like `-o host-a -o host-b`.
-
-## Obtaining global cluster lock
-
-```
-orgalorg -o <host>... -L
-```
-
-## Obtaining global cluster lock on custom directory
-
-```
-orgalorg -o <host>... -L -r /etc
-```
-
-## Evaluating command on hosts in parallel
-
-```
-orgalorg -o <host>... -C uptime
-```
-
-## Evaluating command on hosts given by stdin
-
-`axfr` is a tool of your choice for retrieving domain information from your
-infrastructure DNS.
-
-```
-axfr | grep phpnode | orgalorg -s -C uptime
-```
-
-## Evaluate command under root (passwordless sudo required)
-
-```
-orgalorg -o <host>... -x -C whoami
-```
-
-## Copying SSH public key for remote authentication
-
-```
-orgalorg -o <host>... -p -i ~/.ssh/id_rsa.pub -C tee -a ~/.ssh/authorized_keys
-```
-
-## Synchronizing configs and then reloading service (like nginx)
-
-```
-orgalorg -o <host>... -n 'systemctl reload nginx' -S /etc/nginx.conf
-```
