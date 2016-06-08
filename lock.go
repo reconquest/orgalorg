@@ -17,6 +17,7 @@ func acquireDistributedLock(
 	runnerFactory runnerFactory,
 	addresses []address,
 	failOnError bool,
+	noConnFail bool,
 ) (*distributedLock, error) {
 	var (
 		cluster = &distributedLock{
@@ -34,12 +35,21 @@ func acquireDistributedLock(
 			err := connectToNode(cluster, runnerFactory, nodeAddress, mutex)
 
 			if err != nil {
-				debugf(`%4d/%d connection established: %s`,
-					atomic.AddInt64(&nodeIndex, 1),
-					len(addresses),
-					nodeAddress,
-				)
+				if noConnFail {
+					warningf("%s", err.Error())
+					errors <- nil
+				} else {
+					errors <- err
+				}
+
+				return
 			}
+
+			debugf(`%4d/%d connection established: %s`,
+				atomic.AddInt64(&nodeIndex, 1),
+				len(addresses),
+				nodeAddress,
+			)
 
 			errors <- err
 		}(nodeAddress)

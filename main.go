@@ -116,6 +116,7 @@ Options:
                           behaviour, this option can be used.
     -t --no-lock-fail    Try to obtain global lock, but only print warning if
                           it cannot be done, do not stop execution.
+    -w --no-conn-fail    Skip unreachable servers whatsoever.
     -r --root <root>     Specify root dir to extract files into.
                           By default, orgalorg will create temporary directory
                           inside of '$ROOT'.
@@ -551,6 +552,8 @@ func connectAndLock(
 		rootDir, _    = args["--root"].(string)
 		sshKeyPath, _ = args["--key"].(string)
 		lockFile, _   = args["--lock-file"].(string)
+
+		noConnFail = args["--no-conn-fail"].(bool)
 	)
 
 	addresses, err := parseAddresses(hosts, defaultUser, fromStdin)
@@ -592,6 +595,7 @@ func connectAndLock(
 		runners,
 		addresses,
 		failOnError,
+		noConnFail,
 	)
 	if err != nil {
 		return nil, hierr.Errorf(
