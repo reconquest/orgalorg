@@ -73,6 +73,12 @@ orgalorg -o <host>... -p -i ~/.ssh/id_rsa.pub -C tee -a ~/.ssh/authorized_keys
 orgalorg -o <host>... -xn 'systemctl reload nginx' -S /etc/nginx.conf
 ```
 
+## Evaluating shell script
+
+```
+orgalorg -o <host>... -i script.bash -C bash
+```
+
 
 ## Global Cluster Lock
 
