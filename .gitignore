@@ -3,5 +3,3 @@
 /orgalorg
 /.cover
 /coverage
-/vendor/github.com/reconquest/go-test.bash
-/vendor/github.com/reconquest/test-runner.bash
