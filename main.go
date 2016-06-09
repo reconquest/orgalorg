@@ -421,7 +421,7 @@ func synchronize(args map[string]interface{}) error {
 		canceler.Wait()
 		canceler.L.Unlock()
 
-		exit(0)
+		return nil
 	}
 
 	err = upload(args, cluster, filesList)
