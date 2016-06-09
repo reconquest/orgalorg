@@ -175,6 +175,8 @@ const (
 	defaultSSHPort    = 22
 	sshPasswordPrompt = "Password: "
 
+	// heartbeatTimeoutCoefficient will be multiplied to send timeout and
+	// resulting value will be used as time interval between heartbeats.
 	heartbeatTimeoutCoefficient = 0.8
 
 	runsDirectory = "/var/run/orgalorg/"
