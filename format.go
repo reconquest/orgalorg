@@ -63,6 +63,10 @@ func (writer *jsonOutputWriter) Write(data []byte) (int, error) {
 }
 
 func serializeError(err error) string {
+	if format == outputFormatText {
+		return fmt.Sprint(err)
+	}
+
 	if hierarchicalError, ok := err.(hierr.Error); ok {
 		serializedError := fmt.Sprint(hierarchicalError.Nested)
 		if nested, ok := hierarchicalError.Nested.(error); ok {
