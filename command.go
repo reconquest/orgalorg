@@ -126,17 +126,36 @@ func runRemoteExecutionNode(
 		)
 	}
 
+	stdoutBackend := io.Writer(os.Stdout)
+	stderrBackend := io.Writer(os.Stderr)
+
+	if format == outputFormatJSON {
+		stdoutBackend = &jsonOutputWriter{
+			stream: `stdout`,
+			node:   node.String(),
+
+			output: os.Stdout,
+		}
+
+		stderrBackend = &jsonOutputWriter{
+			stream: `stderr`,
+			node:   node.String(),
+
+			output: os.Stderr,
+		}
+	}
+
 	var stdout io.WriteCloser
 	var stderr io.WriteCloser
-	switch verbose {
-	case verbosityQuiet:
-		stdout = lineflushwriter.New(nopCloser{os.Stdout}, logLock, false)
-		stderr = lineflushwriter.New(nopCloser{os.Stderr}, logLock, false)
+	switch {
+	case verbose == verbosityQuiet || format == outputFormatJSON:
+		stdout = lineflushwriter.New(nopCloser{stdoutBackend}, logMutex, false)
+		stderr = lineflushwriter.New(nopCloser{stderrBackend}, logMutex, false)
 
-	case verbosityNormal:
+	case verbose == verbosityNormal:
 		stdout = lineflushwriter.New(
 			prefixwriter.New(
-				nopCloser{os.Stdout},
+				nopCloser{stdoutBackend},
 				node.address.domain+" ",
 			),
 			logLock,
@@ -145,7 +164,7 @@ func runRemoteExecutionNode(
 
 		stderr = lineflushwriter.New(
 			prefixwriter.New(
-				nopCloser{os.Stderr},
+				nopCloser{stderrBackend},
 				node.address.domain+" ",
 			),
 			logLock,

@@ -156,6 +156,11 @@ Advanced options:
                           using '-g', they will be appended to shell
                           invocation.
                           [default: bash -c $'{}']
+    --json               Output everything in line-by-line JSON format,
+                          printing objects with fields:
+                          * 'stream' = 'stdout' | 'stderr';
+                          * 'node' = <node-name> | null (if internal output);
+                          * 'body' = <string>
     --no-preserve-uid    Do not preserve UIDs for transferred files.
     --no-preserve-gid    Do not preserve GIDs for transferred files.
 
@@ -189,6 +194,7 @@ const (
 var (
 	logger  = lorg.NewLog()
 	verbose = verbosityNormal
+	format  = outputFormatText
 )
 
 var (
@@ -217,9 +223,13 @@ func main() {
 
 	setLoggerVerbosity(verbose, logger)
 
+	format = parseOutputFormat(args)
+
+	setLoggerOutputFormat(format, logger)
+
 	err = checkOptionsCompatibility(args)
 	if err != nil {
-		logger.Error(hierr.Errorf(
+		errorf("%s", hierr.Errorf(
 			err,
 			`incompatible options given`,
 		))
@@ -239,13 +249,23 @@ func main() {
 	}
 
 	if err != nil {
-		logger.Error(err)
+		errorf("%s", err)
 
 		exit(1)
 	}
 }
 
-func setLoggerVerbosity(level verbosity, logger *lorg.Log) {
+func setLoggerOutputFormat(format outputFormat, logger *lorg.Log) {
+	if format == outputFormatJSON {
+		logger.SetOutput(&jsonOutputWriter{
+			stream: `stderr`,
+			node:   ``,
+			output: os.Stderr,
+		})
+	}
+}
+
+func setLoggerVerbosity(verbose verbosity, logger *lorg.Log) {
 	logger.SetLevel(lorg.LevelWarning)
 
 	switch {

@@ -71,12 +71,13 @@ func heartbeat(
 	for {
 		_, err := io.WriteString(node.connection.stdin, heartbeatPing+"\n")
 		if err != nil {
-			logger.Error(
+			errorf(
+				"%s",
 				hierr.Errorf(
 					err,
 					`%s can't send heartbeat`,
 					node.String(),
-				).Error(),
+				),
 			)
 
 			finish(2)
@@ -92,7 +93,8 @@ func heartbeat(
 
 		ping, err := bufio.NewReader(node.connection.stdout).ReadString('\n')
 		if err != nil {
-			logger.Error(
+			errorf(
+				"%s",
 				hierr.Errorf(
 					err,
 					`%s can't receive heartbeat`,
@@ -104,7 +106,7 @@ func heartbeat(
 		}
 
 		if strings.TrimSpace(ping) != heartbeatPing {
-			logger.Errorf(
+			errorf(
 				`%s received unexpected heartbeat ping: '%s'`,
 				node.String(),
 				ping,
