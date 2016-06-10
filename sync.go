@@ -21,6 +21,8 @@ func runSyncProtocol(
 		)
 	}
 
+	tracef(`starting sync protocol with %d nodes`, len(execution.nodes))
+
 	err = protocol.Init(execution.stdin)
 	if err != nil {
 		return hierr.Errorf(
@@ -28,6 +30,8 @@ func runSyncProtocol(
 			`can't init protocol with sync tool`,
 		)
 	}
+
+	tracef(`sending information about %d nodes to each`, len(execution.nodes))
 
 	for _, node := range execution.nodes {
 		err = protocol.SendNode(node)
@@ -40,6 +44,8 @@ func runSyncProtocol(
 		}
 	}
 
+	tracef(`sending start message to sync tools`)
+
 	err = protocol.SendStart()
 	if err != nil {
 		return hierr.Errorf(
@@ -47,6 +53,8 @@ func runSyncProtocol(
 			`can't start sync tool`,
 		)
 	}
+
+	debugf(`waiting sync tool to finish`)
 
 	err = execution.wait()
 	if err != nil {
