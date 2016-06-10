@@ -539,16 +539,21 @@ func connectAndLock(
 	canceler *sync.Cond,
 ) (*distributedLock, error) {
 	var (
+		hosts = args["--host"].([]string)
+
 		sendTimeout = args["--send-timeout"].(string)
+		defaultUser = args["--user"].(string)
+
 		noLockFail  = args["--no-lock-fail"].(bool)
 		askPassword = args["--password"].(bool)
+		fromStdin   = args["--read-stdin"].(bool)
 
 		rootDir, _    = args["--root"].(string)
 		sshKeyPath, _ = args["--key"].(string)
 		lockFile, _   = args["--lock-file"].(string)
 	)
 
-	addresses, err := parseAddresses(args)
+	addresses, err := parseAddresses(hosts, defaultUser, fromStdin)
 	if err != nil {
 		return nil, hierr.Errorf(
 			err,
@@ -650,13 +655,11 @@ func createRunnerFactory(
 	)
 }
 
-func parseAddresses(args map[string]interface{}) ([]address, error) {
-	var (
-		defaultUser = args["--user"].(string)
-		hosts       = args["--host"].([]string)
-		fromStdin   = args["--read-stdin"].(bool)
-	)
-
+func parseAddresses(
+	hosts []string,
+	defaultUser string,
+	fromStdin bool,
+) ([]address, error) {
 	var (
 		hostsToParse = []string{}
 	)
