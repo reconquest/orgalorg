@@ -40,7 +40,8 @@ func (lock *distributedLock) acquire(filename string) error {
 				warningf(
 					hierr.Errorf(
 						err,
-						`failed to acquire lock, but continuing execution`,
+						`failed to acquire lock, `+
+							`but proceeding with execution`,
 					).Error(),
 				)
 
