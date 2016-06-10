@@ -12,7 +12,7 @@ import (
 type distributedLock struct {
 	nodes []*distributedLockNode
 
-	noFail bool
+	failOnError bool
 }
 
 func (lock *distributedLock) addNodeRunner(
@@ -36,7 +36,7 @@ func (lock *distributedLock) acquire(filename string) error {
 
 		err := node.lock(filename)
 		if err != nil {
-			if lock.noFail {
+			if lock.failOnError {
 				warningf(
 					hierr.Errorf(
 						err,

@@ -16,11 +16,11 @@ func acquireDistributedLock(
 	lockFile string,
 	runnerFactory runnerFactory,
 	addresses []address,
-	noLockFail bool,
+	failOnError bool,
 ) (*distributedLock, error) {
 	var (
 		cluster = &distributedLock{
-			noFail: noLockFail,
+			failOnError: failOnError,
 		}
 
 		nodeIndex = int64(0)

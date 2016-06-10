@@ -544,7 +544,7 @@ func connectAndLock(
 		sendTimeout = args["--send-timeout"].(string)
 		defaultUser = args["--user"].(string)
 
-		noLockFail  = args["--no-lock-fail"].(bool)
+		failOnError = !args["--no-lock-fail"].(bool)
 		askPassword = args["--password"].(bool)
 		fromStdin   = args["--read-stdin"].(bool)
 
@@ -591,7 +591,7 @@ func connectAndLock(
 		lockFile,
 		runners,
 		addresses,
-		noLockFail,
+		failOnError,
 	)
 	if err != nil {
 		return nil, hierr.Errorf(
