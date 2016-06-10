@@ -231,9 +231,9 @@ func main() {
 	case args["--lock"].(bool):
 		fallthrough
 	case args["--sync"].(bool):
-		err = synchronize(args)
+		err = handleSynchronize(args)
 	case args["--command"].(bool):
-		err = evaluate(args)
+		err = handleEvaluate(args)
 	}
 
 	if err != nil {
@@ -284,7 +284,7 @@ func checkOptionsCompatibility(args map[string]interface{}) error {
 	return nil
 }
 
-func evaluate(args map[string]interface{}) error {
+func handleEvaluate(args map[string]interface{}) error {
 	var (
 		stdin, _   = args["--stdin"].(string)
 		rootDir, _ = args["--root"].(string)
@@ -370,7 +370,7 @@ func run(
 	return nil
 }
 
-func synchronize(args map[string]interface{}) error {
+func handleSynchronize(args map[string]interface{}) error {
 	var (
 		stdin, _    = args["--stdin"].(string)
 		rootDir, _  = args["--root"].(string)
