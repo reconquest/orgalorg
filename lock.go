@@ -7,6 +7,11 @@ import (
 	"github.com/seletskiy/hierr"
 )
 
+// acquireDistributedLock tries to acquire atomic file lock on each of
+// specified remote nodes. lockFile is used to specify target lock file, it
+// must exist on every node. runnerFactory will be used to make connection
+// to remote node. If noLockFail is given, then only warning will be printed
+// if lock process has been failed.
 func acquireDistributedLock(
 	lockFile string,
 	runnerFactory runnerFactory,
