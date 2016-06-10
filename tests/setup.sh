@@ -30,7 +30,7 @@ go-test:set-prefix "$(tests:print-current-testcase | sed 's/\W/_/g')-"
 
     tests:run-background "pid" :ssh:run-daemon "$container_name" "-D"
 
-    while ! containers:is-active "$container_name"; do
+    until containers:is-active "$container_name"; do
         tests:debug "[$container_name] is offline"
     done
 
@@ -41,7 +41,7 @@ go-test:set-prefix "$(tests:print-current-testcase | sed 's/\W/_/g')-"
     local container_name="$1"
     local container_ip="$2"
 
-    while ! :ssh "$container_ip" "true"; do
+    until :ssh "$container_ip" "true"; do
         tests:debug "[$container_name] sshd is offline"
     done
 

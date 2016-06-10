@@ -11,7 +11,7 @@
             :orgalorg:with-key --lock "${@}" '2>&1' \
                 '|' tee "$_orgalorg_output"
 
-    while ! grep -qF "waiting for interrupt" "$_orgalorg_output" 2>/dev/null
+    until grep -qF "waiting for interrupt" "$_orgalorg_output" 2>/dev/null
     do
         tests:debug "[orgalorg] waiting for global lock..."
         sleep 0.1
