@@ -38,11 +38,6 @@ func newSyncProtocol() *syncProtocol {
 	}
 }
 
-// Close is currently noop.
-func (protocol *syncProtocol) Close() error {
-	return nil
-}
-
 // Init starts protocol and sends HELLO message to the writer. Specified writer
 // will be used in all further communications.
 func (protocol *syncProtocol) Init(output io.WriteCloser) error {
