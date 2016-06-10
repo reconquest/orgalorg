@@ -17,7 +17,7 @@ go-test:set-prefix "$(tests:print-current-testcase | sed 's/\W/_/g')-"
                 /home/$(:ssh:get-username)/.ssh
 
             chown -R \\\\
-                $(:ssh:get-username): /home/$(:ssh:get-username)" \
+                $(:ssh:get-username): /home/$(:ssh:get-username)"
 
     tests:ensure :ssh:copy-id "$container_name" \
         "$(:ssh:get-username)" < "$(:ssh:get-key).pub"
