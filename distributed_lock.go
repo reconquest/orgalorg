@@ -36,7 +36,7 @@ func (lock *distributedLock) acquire(filename string) error {
 
 		err := node.lock(filename)
 		if err != nil {
-			if lock.failOnError {
+			if !lock.failOnError {
 				warningf(
 					hierr.Errorf(
 						err,
