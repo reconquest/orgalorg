@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"strings"
@@ -16,16 +15,21 @@ var (
 	syncProtocolSync   = "SYNC"
 )
 
+// syncProtocol handles SYNC protocol described in the main.go.
+//
+// It will handle protocol over all connected nodes.
 type syncProtocol struct {
-	input  *bytes.Buffer
+	// output represents writer, that should be connected to stdins of
+	// all connected nodes.
 	output io.WriteCloser
 
+	// prefix is a unique string which prefixes every protocol message.
 	prefix string
 }
 
+// newSyncProtocol returns syncProtocol instantiated with unique prefix.
 func newSyncProtocol() *syncProtocol {
 	return &syncProtocol{
-		input: &bytes.Buffer{},
 		prefix: fmt.Sprintf(
 			"%s:%d",
 			syncProtocolPrefix,
@@ -34,10 +38,13 @@ func newSyncProtocol() *syncProtocol {
 	}
 }
 
+// Close is currently noop.
 func (protocol *syncProtocol) Close() error {
 	return nil
 }
 
+// Init starts protocol and sends HELLO message to the writer. Specified writer
+// will be used in all further communications.
 func (protocol *syncProtocol) Init(output io.WriteCloser) error {
 	protocol.output = output
 
@@ -52,6 +59,8 @@ func (protocol *syncProtocol) Init(output io.WriteCloser) error {
 	return nil
 }
 
+// SendNode sends to the writer serialized representation of specified node as
+// NODE message.
 func (protocol *syncProtocol) SendNode(node *remoteExecutionNode) error {
 	_, err := io.WriteString(
 		protocol.output,
@@ -64,6 +73,7 @@ func (protocol *syncProtocol) SendNode(node *remoteExecutionNode) error {
 	return nil
 }
 
+// SendStart sends START message to the writer.
 func (protocol *syncProtocol) SendStart() error {
 	_, err := io.WriteString(
 		protocol.output,
@@ -76,10 +86,16 @@ func (protocol *syncProtocol) SendStart() error {
 	return nil
 }
 
+// IsSyncCommand will return true,  if specified line looks like incoming
+// SYNC message from the remote node.
 func (protocol *syncProtocol) IsSyncCommand(line string) bool {
 	return strings.HasPrefix(line, protocol.prefix+" "+syncProtocolSync)
 }
 
+// SendSync sends SYNC message to the writer, tagging it as sent from node,
+// described by given source and adding optional description for the given
+// SYNC phase taken by extraction it from the original SYNC message, sent
+// by node.
 func (protocol *syncProtocol) SendSync(
 	source fmt.Stringer,
 	sync string,
