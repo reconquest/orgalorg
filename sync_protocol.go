@@ -5,6 +5,8 @@ import (
 	"io"
 	"strings"
 	"time"
+
+	"github.com/reconquest/go-prefixwriter"
 )
 
 var (
@@ -41,11 +43,11 @@ func newSyncProtocol() *syncProtocol {
 // Init starts protocol and sends HELLO message to the writer. Specified writer
 // will be used in all further communications.
 func (protocol *syncProtocol) Init(output io.WriteCloser) error {
-	protocol.output = output
+	protocol.output = prefixwriter.New(output, protocol.prefix+" ")
 
 	_, err := io.WriteString(
 		protocol.output,
-		protocol.prefix+" "+syncProtocolHello+"\n",
+		syncProtocolHello+"\n",
 	)
 	if err != nil {
 		return protocolSuspendEOF(err)
@@ -59,7 +61,7 @@ func (protocol *syncProtocol) Init(output io.WriteCloser) error {
 func (protocol *syncProtocol) SendNode(node *remoteExecutionNode) error {
 	_, err := io.WriteString(
 		protocol.output,
-		protocol.prefix+" "+syncProtocolNode+" "+node.String()+"\n",
+		syncProtocolNode+" "+node.String()+"\n",
 	)
 	if err != nil {
 		return protocolSuspendEOF(err)
@@ -72,7 +74,7 @@ func (protocol *syncProtocol) SendNode(node *remoteExecutionNode) error {
 func (protocol *syncProtocol) SendStart() error {
 	_, err := io.WriteString(
 		protocol.output,
-		protocol.prefix+" "+syncProtocolStart+"\n",
+		syncProtocolStart+"\n",
 	)
 	if err != nil {
 		return protocolSuspendEOF(err)
@@ -101,7 +103,7 @@ func (protocol *syncProtocol) SendSync(
 
 	_, err := io.WriteString(
 		protocol.output,
-		protocol.prefix+" "+syncProtocolSync+" "+source.String()+" "+data+"\n",
+		syncProtocolSync+" "+source.String()+" "+data+"\n",
 	)
 
 	if err != nil {
