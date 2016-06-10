@@ -6,16 +6,16 @@ cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 
 source "vendor/github.com/reconquest/import.bash/import.bash"
 
-import "github.com/reconquest/hastur"
-import "github.com/reconquest/containers"
-import "github.com/reconquest/progress"
-import "github.com/reconquest/test-runner"
-import "github.com/reconquest/tests.sh"
-import "github.com/reconquest/go-test"
+import:source "github.com/reconquest/hastur"
+import:source "github.com/reconquest/containers"
+import:source "github.com/reconquest/progress"
+import:source "github.com/reconquest/test-runner"
+import:source "github.com/reconquest/tests.sh"
+import:source "github.com/reconquest/go-test"
 
-include tests/ssh.sh
-include tests/build.sh
-include tests/orgalorg.sh
+import:include tests/ssh.sh
+import:include tests/build.sh
+import:include tests/orgalorg.sh
 
 which brctl >/dev/null 2>&1
 if [ $? -ne 0 ]; then
