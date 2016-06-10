@@ -61,7 +61,7 @@ func parseAddress(
 	}, nil
 }
 
-func uniqAddresses(addresses []address) []address {
+func getUniqueAddresses(addresses []address) []address {
 	result := []address{}
 
 	for _, origin := range addresses {

@@ -708,7 +708,7 @@ func parseAddresses(
 		addresses = append(addresses, parsedAddress)
 	}
 
-	return uniqAddresses(addresses), nil
+	return getUniqueAddresses(addresses), nil
 }
 
 func generateRunID() string {
