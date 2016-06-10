@@ -585,8 +585,13 @@ func connectAndLock(
 
 	debugf(`global lock acquired on %d nodes`, len(cluster.nodes))
 
-	// err already checked in the timeouts.go
-	heartbeatMilliseconds, _ := strconv.Atoi(sendTimeout)
+	heartbeatMilliseconds, err := strconv.Atoi(sendTimeout)
+	if err != nil {
+		return hierr.Errorf(
+			err,
+			`can't use --send-timeout as heartbeat timeout`,
+		)
+	}
 
 	cluster.runHeartbeats(
 		time.Duration(
