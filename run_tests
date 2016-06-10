@@ -16,18 +16,9 @@ import:source "github.com/reconquest/go-test.bash"
 import:include tests/ssh.sh
 import:include tests/build.sh
 import:include tests/orgalorg.sh
+import:include tests/deps.sh
 
-which brctl >/dev/null 2>&1
-if [ $? -ne 0 ]; then
-    echo "missing dependency: brctl (bridge-utils)"
-    exit 1
-fi
-
-which hastur >/dev/null 2>&1
-if [ $? -ne 0 ]; then
-    echo "missing dependency: hastur"
-    exit 1
-fi
+:deps:check
 
 test-runner:set-custom-opts \
     --keep-containers \
