@@ -10,17 +10,36 @@ import (
 	"github.com/seletskiy/hierr"
 )
 
+type remoteNodesMap map[*distributedLockNode]*remoteExecutionNode
+
+type remoteNodes struct {
+	*sync.Mutex
+
+	nodes remoteNodesMap
+}
+
+func (nodes *remoteNodes) Set(
+	node *distributedLockNode,
+	remote *remoteExecutionNode,
+) {
+	nodes.Lock()
+	defer nodes.Unlock()
+
+	nodes.nodes[node] = remote
+}
+
 func runRemoteExecution(
 	lockedNodes *distributedLock,
 	command string,
 	setupCallback func(*remoteExecutionNode),
 ) (*remoteExecution, error) {
 	var (
-		stdins      = []io.WriteCloser{}
-		remoteNodes = map[*distributedLockNode]*remoteExecutionNode{}
+		stdins = []io.WriteCloser{}
 
-		logMutex      = &sync.Mutex{}
-		nodesMapMutex = &sync.Mutex{}
+		logLock    = &sync.Mutex{}
+		stdinsLock = &sync.Mutex{}
+
+		nodes = &remoteNodes{&sync.Mutex{}, remoteNodesMap{}}
 	)
 
 	errors := make(chan error, 0)
@@ -38,7 +57,7 @@ func runRemoteExecution(
 			remoteNode, err := runRemoteExecutionNode(
 				node,
 				command,
-				logMutex,
+				logLock,
 			)
 			if err != nil {
 				errors <- err
@@ -62,12 +81,12 @@ func runRemoteExecution(
 				return
 			}
 
-			nodesMapMutex.Lock()
-			{
-				stdins = append(stdins, remoteNode.stdin)
-				remoteNodes[node] = remoteNode
-			}
-			nodesMapMutex.Unlock()
+			nodes.Set(node, remoteNode)
+
+			stdinsLock.Lock()
+			defer stdinsLock.Unlock()
+
+			stdins = append(stdins, remoteNode.stdin)
 
 			errors <- nil
 		}(node)
@@ -86,14 +105,14 @@ func runRemoteExecution(
 	return &remoteExecution{
 		stdin: &multiWriteCloser{stdins},
 
-		nodes: remoteNodes,
+		nodes: nodes.nodes,
 	}, nil
 }
 
 func runRemoteExecutionNode(
 	node *distributedLockNode,
 	command string,
-	logMutex *sync.Mutex,
+	logLock *sync.Mutex,
 ) (*remoteExecutionNode, error) {
 	remoteCommand, err := node.runner.Command(command)
 	if err != nil {
@@ -107,8 +126,8 @@ func runRemoteExecutionNode(
 	var stderr io.WriteCloser
 	switch verbose {
 	case verbosityQuiet:
-		stdout = lineflushwriter.New(nopCloser{os.Stdout}, logMutex, false)
-		stderr = lineflushwriter.New(nopCloser{os.Stderr}, logMutex, false)
+		stdout = lineflushwriter.New(nopCloser{os.Stdout}, logLock, false)
+		stderr = lineflushwriter.New(nopCloser{os.Stderr}, logLock, false)
 
 	case verbosityNormal:
 		stdout = lineflushwriter.New(
@@ -116,7 +135,7 @@ func runRemoteExecutionNode(
 				nopCloser{os.Stdout},
 				node.address.domain+" ",
 			),
-			logMutex,
+			logLock,
 			true,
 		)
 
@@ -125,7 +144,7 @@ func runRemoteExecutionNode(
 				nopCloser{os.Stderr},
 				node.address.domain+" ",
 			),
-			logMutex,
+			logLock,
 			true,
 		)
 
@@ -137,7 +156,7 @@ func runRemoteExecutionNode(
 				newDebugWriter(logger),
 				node.String()+" {cmd} <stdout> ",
 			),
-			logMutex,
+			logLock,
 			false,
 		)
 
@@ -146,7 +165,7 @@ func runRemoteExecutionNode(
 				newDebugWriter(logger),
 				node.String()+" {cmd} <stderr> ",
 			),
-			logMutex,
+			logLock,
 			false,
 		)
 	}
