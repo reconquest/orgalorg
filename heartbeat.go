@@ -15,6 +15,10 @@ const (
 	heartbeatPing = "PING"
 )
 
+// heartbeat runs infinite process of sending test messages to the connected
+// node. All heartbeats to all nodes are connected to each other, so if one
+// heartbeat routine exits, all heartbeat routines will exit, because in that
+// case orgalorg can't guarantee global lock.
 func heartbeat(
 	period time.Duration,
 	node *distributedLockNode,
@@ -22,6 +26,8 @@ func heartbeat(
 ) {
 	abort := make(chan struct{}, 0)
 
+	// Internal go-routine for listening abort broadcast and finishing current
+	// heartbeat process.
 	go func() {
 		canceler.L.Lock()
 		canceler.Wait()
@@ -30,6 +36,8 @@ func heartbeat(
 		abort <- struct{}{}
 	}()
 
+	// Finish finishes current go-routine and send abort broadcast to all
+	// connected go-routines.
 	finish := func(code int) {
 		canceler.L.Lock()
 		canceler.Broadcast()
@@ -57,6 +65,9 @@ func heartbeat(
 
 	ticker := time.Tick(period)
 
+	// Infinite loop of heartbeating. It will send heartbeat message, wait
+	// fraction of send timeout time and try to receive heartbeat response.
+	// If no response received, heartbeat process aborts.
 	for {
 		_, err := io.WriteString(node.connection.stdin, heartbeatPing+"\n")
 		if err != nil {
