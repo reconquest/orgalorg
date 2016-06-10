@@ -372,12 +372,13 @@ func run(
 
 func handleSynchronize(args map[string]interface{}) error {
 	var (
-		stdin, _    = args["--stdin"].(string)
-		rootDir, _  = args["--root"].(string)
-		lockOnly    = args["--lock"].(bool)
-		uploadOnly  = args["--upload"].(bool)
-		relative    = args["--relative"].(bool)
-		isSimpleCmd = args["--simple"].(bool)
+		stdin, _   = args["--stdin"].(string)
+		rootDir, _ = args["--root"].(string)
+		lockOnly   = args["--lock"].(bool)
+		uploadOnly = args["--upload"].(bool)
+		relative   = args["--relative"].(bool)
+
+		isSimpleCommand = args["--simple"].(bool)
 
 		commandString = args["--sync-cmd"].(string)
 		commandArgs   = args["--arg"].([]string)
@@ -456,7 +457,7 @@ func handleSynchronize(args map[string]interface{}) error {
 		directory: rootDir,
 	}
 
-	if isSimpleCmd {
+	if isSimpleCommand {
 		return run(cluster, runner, stdin)
 	}
 
