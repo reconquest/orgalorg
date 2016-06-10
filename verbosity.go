@@ -13,19 +13,19 @@ const (
 
 func parseVerbosity(args map[string]interface{}) verbosity {
 	var (
-		quiet   = args["--quiet"].(bool)
-		verbose = args["--verbose"].(int)
+		quiet = args["--quiet"].(bool)
+		level = args["--verbose"].(int)
 	)
 
 	if quiet {
 		return verbosityQuiet
 	}
 
-	if verbose == 1 {
+	if level == 1 {
 		return verbosityDebug
 	}
 
-	if verbose > 1 {
+	if level > 1 {
 		return verbosityTrace
 	}
 

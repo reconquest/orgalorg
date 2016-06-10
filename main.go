@@ -243,13 +243,13 @@ func main() {
 	}
 }
 
-func setLoggerVerbosity(verbose verbosity, logger *lorg.Log) {
+func setLoggerVerbosity(level verbosity, logger *lorg.Log) {
 	logger.SetLevel(lorg.LevelWarning)
 
 	switch {
-	case verbose >= verbosityDebug:
+	case level >= verbosityDebug:
 		logger.SetLevel(lorg.LevelDebug)
-	case verbose >= verbosityNormal:
+	case level >= verbosityNormal:
 		logger.SetLevel(lorg.LevelInfo)
 	}
 }
