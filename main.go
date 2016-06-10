@@ -19,6 +19,7 @@ import (
 	"github.com/kovetskiy/lorg"
 	"github.com/mattn/go-shellwords"
 	"github.com/seletskiy/hierr"
+	"github.com/theairkit/runcmd"
 )
 
 const version = "1.0"
@@ -538,10 +539,13 @@ func connectAndLock(
 	canceler *sync.Cond,
 ) (*distributedLock, error) {
 	var (
-		lockFile, _ = args["--lock-file"].(string)
-		rootDir, _  = args["--root"].(string)
 		sendTimeout = args["--send-timeout"].(string)
 		noLockFail  = args["--no-lock-fail"].(bool)
+		askPassword = args["--password"].(bool)
+
+		rootDir, _    = args["--root"].(string)
+		sshKeyPath, _ = args["--key"].(string)
+		lockFile, _   = args["--lock-file"].(string)
 	)
 
 	addresses, err := parseAddresses(args)
@@ -552,7 +556,15 @@ func connectAndLock(
 		)
 	}
 
-	runners, err := createRunnerFactory(args)
+	timeouts, err := makeTimeouts(args)
+	if err != nil {
+		return nil, hierr.Errorf(
+			err,
+			`can't parse SSH connection timeouts`,
+		)
+	}
+
+	runners, err := createRunnerFactory(timeouts, sshKeyPath, askPassword)
 	if err != nil {
 		return nil, hierr.Errorf(
 			err,
@@ -587,7 +599,7 @@ func connectAndLock(
 
 	heartbeatMilliseconds, err := strconv.Atoi(sendTimeout)
 	if err != nil {
-		return hierr.Errorf(
+		return nil, hierr.Errorf(
 			err,
 			`can't use --send-timeout as heartbeat timeout`,
 		)
@@ -603,25 +615,16 @@ func connectAndLock(
 	return cluster, nil
 }
 
-func createRunnerFactory(args map[string]interface{}) (runnerFactory, error) {
-	var (
-		sshKeyPath, _ = args["--key"].(string)
-		askPassword   = args["--password"].(bool)
-	)
-
-	timeouts, err := makeTimeouts(args)
-	if err != nil {
-		return nil, hierr.Errorf(
-			err,
-			`can't parse SSH connection timeouts`,
-		)
-	}
-
+func createRunnerFactory(
+	timeouts *runcmd.Timeouts,
+	sshKeyPath string,
+	askPassword bool,
+) (runnerFactory, error) {
 	switch {
 	case askPassword:
 		var password string
 
-		password, err = readPassword(sshPasswordPrompt)
+		password, err := readPassword(sshPasswordPrompt)
 		if err != nil {
 			return nil, hierr.Errorf(
 				err,
@@ -642,8 +645,7 @@ func createRunnerFactory(args map[string]interface{}) (runnerFactory, error) {
 
 	}
 
-	return nil, hierr.Errorf(
-		err,
+	return nil, fmt.Errorf(
 		`no matching runner factory found [password, publickey]`,
 	)
 }
