@@ -8,6 +8,10 @@ import (
 	"github.com/seletskiy/hierr"
 )
 
+var (
+	hostRegexp = regexp.MustCompile(`^(?:([^@]+)@)?(.*?)(?::(\d+))?$`)
+)
+
 type address struct {
 	user   string
 	domain string
@@ -26,8 +30,6 @@ func (address address) String() string {
 func parseAddress(
 	host string, defaultUser string, defaultPort int,
 ) (address, error) {
-	hostRegexp := regexp.MustCompile(`^(?:([^@]+)@)?(.*?)(?::(\d+))?$`)
-
 	matches := hostRegexp.FindStringSubmatch(host)
 
 	var (

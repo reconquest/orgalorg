@@ -149,8 +149,6 @@ func runRemoteExecutionNode(
 		)
 
 	default:
-		fallthrough
-	case verbosityDebug:
 		stdout = lineflushwriter.New(
 			prefixwriter.New(
 				newDebugWriter(logger),
