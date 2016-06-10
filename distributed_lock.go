@@ -18,13 +18,11 @@ type distributedLock struct {
 func (lock *distributedLock) addNodeRunner(
 	runner runcmd.Runner,
 	address address,
-) error {
+) {
 	lock.nodes = append(lock.nodes, &distributedLockNode{
 		address: address,
 		runner:  runner,
 	})
-
-	return nil
 }
 
 func (lock *distributedLock) acquire(filename string) error {
