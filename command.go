@@ -118,7 +118,7 @@ func runRemoteExecutionNode(
 	if err != nil {
 		return nil, hierr.Errorf(
 			err,
-			`can't create remote command`,
+			`can't establish remote session`,
 		)
 	}
 
