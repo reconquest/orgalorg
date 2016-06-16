@@ -19,9 +19,11 @@ func startArchiveReceivers(
 	rootDir string,
 	sudo bool,
 ) (*remoteExecution, error) {
-	command := []string{}
+	var (
+		command = []string{}
+		prefix  = []string{}
+	)
 
-	prefix := []string{}
 	if sudo {
 		prefix = sudoCommand
 	}
