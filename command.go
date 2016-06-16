@@ -149,8 +149,8 @@ func runRemoteExecutionNode(
 	var stderr io.WriteCloser
 	switch {
 	case verbose == verbosityQuiet || format == outputFormatJSON:
-		stdout = lineflushwriter.New(nopCloser{stdoutBackend}, logMutex, false)
-		stderr = lineflushwriter.New(nopCloser{stderrBackend}, logMutex, false)
+		stdout = lineflushwriter.New(nopCloser{stdoutBackend}, logLock, false)
+		stderr = lineflushwriter.New(nopCloser{stderrBackend}, logLock, false)
 
 	case verbose == verbosityNormal:
 		stdout = lineflushwriter.New(

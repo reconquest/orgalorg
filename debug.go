@@ -35,9 +35,6 @@ func warningf(format string, args ...interface{}) {
 }
 
 func errorf(format string, args ...interface{}) {
-	loggerLock.Lock()
-	defer loggerLock.Unlock()
-
 	args = serializeErrors(args)
 
 	logger.Errorf(format, args...)

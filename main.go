@@ -265,7 +265,7 @@ func setLoggerOutputFormat(format outputFormat, logger *lorg.Log) {
 	}
 }
 
-func setLoggerVerbosity(verbose verbosity, logger *lorg.Log) {
+func setLoggerVerbosity(level verbosity, logger *lorg.Log) {
 	logger.SetLevel(lorg.LevelWarning)
 
 	switch {
