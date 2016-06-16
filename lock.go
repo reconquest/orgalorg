@@ -36,7 +36,7 @@ func acquireDistributedLock(
 
 			if err != nil {
 				if noConnFail {
-					warningf("%s", err.Error())
+					warningf("%s", err)
 					errors <- nil
 				} else {
 					errors <- err
