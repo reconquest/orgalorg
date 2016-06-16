@@ -2,10 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
-
-	"github.com/seletskiy/hierr"
 )
 
 type (
@@ -60,21 +57,4 @@ func (writer *jsonOutputWriter) Write(data []byte) (int, error) {
 	}
 
 	return len(data), nil
-}
-
-func serializeError(err error) string {
-	if format == outputFormatText {
-		return fmt.Sprint(err)
-	}
-
-	if hierarchicalError, ok := err.(hierr.Error); ok {
-		serializedError := fmt.Sprint(hierarchicalError.Nested)
-		if nested, ok := hierarchicalError.Nested.(error); ok {
-			serializedError = serializeError(nested)
-		}
-
-		return hierarchicalError.Message + ": " + serializedError
-	}
-
-	return err.Error()
 }

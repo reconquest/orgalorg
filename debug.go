@@ -1,5 +1,11 @@
 package main
 
+import (
+	"fmt"
+
+	"github.com/seletskiy/hierr"
+)
+
 func tracef(format string, args ...interface{}) {
 	if verbose < verbosityTrace {
 		return
@@ -45,4 +51,21 @@ func serializeErrors(args []interface{}) []interface{} {
 	}
 
 	return args
+}
+
+func serializeError(err error) string {
+	if format == outputFormatText {
+		return fmt.Sprint(err)
+	}
+
+	if hierarchicalError, ok := err.(hierr.Error); ok {
+		serializedError := fmt.Sprint(hierarchicalError.Nested)
+		if nested, ok := hierarchicalError.Nested.(error); ok {
+			serializedError = serializeError(nested)
+		}
+
+		return hierarchicalError.Message + ": " + serializedError
+	}
+
+	return err.Error()
 }
