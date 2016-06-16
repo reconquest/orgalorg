@@ -23,7 +23,7 @@ func startArchiveReceivers(
 
 	prefix := []string{}
 	if sudo {
-		prefix = []string{`sudo`, `-n`, `-E`}
+		prefix = sudoCommand
 	}
 
 	command = append(command, prefix...)

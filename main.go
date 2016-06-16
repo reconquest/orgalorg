@@ -296,7 +296,7 @@ func handleEvaluate(args map[string]interface{}) error {
 	)
 
 	if sudo {
-		command = append([]string{"sudo", "-n"}, command...)
+		command = append(sudoCommand, command...)
 	}
 
 	canceler := sync.NewCond(&sync.Mutex{})
