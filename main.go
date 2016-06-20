@@ -329,10 +329,6 @@ func handleEvaluate(args map[string]interface{}) error {
 		command = args["<command>"].([]string)
 	)
 
-	if sudo {
-		command = append(sudoCommand, command...)
-	}
-
 	canceler := sync.NewCond(&sync.Mutex{})
 
 	cluster, err := connectAndLock(args, canceler)
@@ -342,6 +338,7 @@ func handleEvaluate(args map[string]interface{}) error {
 
 	runner := &remoteExecutionRunner{
 		shell:     shell,
+		sudo:      sudo,
 		command:   command,
 		directory: rootDir,
 	}
@@ -420,6 +417,8 @@ func handleSynchronize(args map[string]interface{}) error {
 
 		shell = args["--shell"].(string)
 
+		sudo = args["--sudo"].(bool)
+
 		fileSources = args["<files>"].([]string)
 	)
 
@@ -487,6 +486,7 @@ func handleSynchronize(args map[string]interface{}) error {
 
 	runner := &remoteExecutionRunner{
 		shell:     shell,
+		sudo:      sudo,
 		command:   command,
 		args:      commandArgs,
 		directory: rootDir,

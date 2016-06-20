@@ -10,10 +10,6 @@ import (
 	"github.com/seletskiy/hierr"
 )
 
-var (
-	sudoCommand = []string{"sudo", "-n", "-E"}
-)
-
 type remoteNodesMap map[*distributedLockNode]*remoteExecutionNode
 
 type remoteNodes struct {
