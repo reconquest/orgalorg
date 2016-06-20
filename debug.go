@@ -31,6 +31,10 @@ func infof(format string, args ...interface{}) {
 func warningf(format string, args ...interface{}) {
 	args = serializeErrors(args)
 
+	if verbose <= verbosityQuiet {
+		return
+	}
+
 	logger.Warningf(format, args...)
 }
 

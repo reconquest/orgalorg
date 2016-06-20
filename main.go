@@ -156,6 +156,9 @@ Advanced options:
                           using '-g', they will be appended to shell
                           invocation.
                           [default: bash -c $'{}']
+    -d --threads <n>     Set threads count which will be used for connection,
+                          locking and execution commands.
+                          [default: 16].
     --json               Output everything in line-by-line JSON format,
                           printing objects with fields:
                           * 'stream' = 'stdout' | 'stderr';
@@ -168,12 +171,12 @@ Timeout options:
     --conn-timeout <t>   Remote host connection timeout in milliseconds.
                           [default: 10000]
     --send-timeout <t>   Remote host connection data sending timeout in
-                          milliseconds. [default: 10000]
+                          milliseconds. [default: 60000]
                           NOTE: send timeout will be also used for the
                           heartbeat messages, that orgalorg and connected nodes
                           exchanges through synchronization process.
     --recv-timeout <t>   Remote host connection data receiving timeout in
-                          milliseconds. [default: 10000]
+                          milliseconds. [default: 60000]
     --keep-alive <t>     How long to keep connection keeped alive after session
                           ends. [default: 10000]
 `
@@ -195,6 +198,8 @@ var (
 	logger  = lorg.NewLog()
 	verbose = verbosityNormal
 	format  = outputFormatText
+
+	pool *threadPool
 )
 
 var (
@@ -235,6 +240,14 @@ func main() {
 		))
 
 		exit(1)
+	}
+
+	pool, err = createThreadPool(args)
+	if err != nil {
+		errorf("%s", hierr.Errorf(
+			err,
+			`can't create thread pool`,
+		))
 	}
 
 	switch {

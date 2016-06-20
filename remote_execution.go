@@ -23,24 +23,45 @@ func (execution *remoteExecution) wait() error {
 	results := make(chan *remoteExecutionResult, 0)
 	for _, node := range execution.nodes {
 		go func(node *remoteExecutionNode) {
-			results <- &remoteExecutionResult{node, node.wait()}
+			pool.run(func() {
+				results <- &remoteExecutionResult{node, node.wait()}
+			})
 		}(node)
 	}
+
+	executionErrors := hierr.Errorf(
+		nil,
+		`can't run remote commands on %d nodes`,
+		len(execution.nodes),
+	)
+
+	errornous := false
 
 	for range execution.nodes {
 		result := <-results
 		if result.err != nil {
-			return hierr.Errorf(
-				result.err,
-				`%s has finished with error`,
-				result.node.node.String(),
+			executionErrors = hierr.Push(
+				executionErrors,
+				hierr.Errorf(
+					result.err,
+					`%s has finished with error`,
+					result.node.node.String(),
+				),
 			)
+
+			errornous = true
+
+			continue
 		}
 
 		tracef(
 			`%s has successfully finished execution`,
 			result.node.node.String(),
 		)
+	}
+
+	if errornous {
+		return executionErrors
 	}
 
 	return nil
