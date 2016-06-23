@@ -737,7 +737,8 @@ func readPassword(prompt string) (string, error) {
 	if err != nil {
 		return "", hierr.Errorf(
 			err,
-			`can't open /dev/tty for reading`,
+			`TTY is required for reading password, `+
+				`but /dev/tty can't be opened`,
 		)
 	}
 
