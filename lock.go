@@ -64,10 +64,14 @@ func acquireDistributedLock(
 					}
 				}
 
-				status := "established"
+				textStatus := "established"
 				if failed {
-					status = "failed"
+					status.IncFailures()
+
+					textStatus = "failed"
 				} else {
+					status.IncSuccess()
+
 					atomic.AddInt64(&connections, 1)
 
 					nodeAddMutex.Lock()
@@ -81,7 +85,7 @@ func acquireDistributedLock(
 					connections,
 					int64(len(addresses))-failures,
 					failures,
-					status,
+					textStatus,
 					nodeAddress,
 				)
 

@@ -48,6 +48,8 @@ func runRemoteExecution(
 		outputLock = nil
 	}
 
+	status.SetOutputLock(logLock)
+
 	errors := make(chan error, 0)
 	for _, node := range lockedNodes.nodes {
 		go func(node *distributedLockNode) {
@@ -197,6 +199,9 @@ func runRemoteExecutionNode(
 			false,
 		)
 	}
+
+	stdout = &statusBarUpdateWriter{stdout}
+	stderr = &statusBarUpdateWriter{stderr}
 
 	if outputLock != (*sync.Mutex)(nil) {
 		sharedLock := newSharedLock(outputLock, 2)

@@ -107,7 +107,7 @@ Options:
                           [default: $HOME/.ssh/id_rsa]
     -p --password        Enable password authentication.
                           Exclude '-k' option.
-                          TTY is required for reading password.
+                          Interactive TTY is required for reading password.
     -x --sudo            Obtain root via 'sudo -n'.
                           By default, orgalorg will not obtain root and do
                           all actions from specified user. To change that
@@ -157,17 +157,49 @@ Advanced options:
                           shell wrapper will be used. If any args are given
                           using '-g', they will be appended to shell
                           invocation.
-                          [default: bash -c $'{}']
+                          [default: bash -c '{}']
     -d --threads <n>     Set threads count which will be used for connection,
                           locking and execution commands.
                           [default: 16].
+    --no-preserve-uid    Do not preserve UIDs for transferred files.
+    --no-preserve-gid    Do not preserve GIDs for transferred files.
+
+Output format and colors options:
     --json               Output everything in line-by-line JSON format,
                           printing objects with fields:
                           * 'stream' = 'stdout' | 'stderr';
                           * 'node' = <node-name> | null (if internal output);
                           * 'body' = <string>
-    --no-preserve-uid    Do not preserve UIDs for transferred files.
-    --no-preserve-gid    Do not preserve GIDs for transferred files.
+    --status-format <f>  Format for the status bar.
+                          Full Go template syntax is available with delims
+                          of '{' and '}'. Variables available:
+                          * .Phase - either:
+                            * '` + statusBarPhaseConnecting + `';
+                            * '` + statusBarPhaseExecuting + `';
+                          * .Total - total amount of connected nodes;
+                          * .Success - number of nodes that successfully done
+                            phase;
+                          * .Failures - number of failed nodes;
+                          Additional functions are available:
+                          * bg <int> - set background color to specified;
+                            * 0 can be used for default bg;
+                          * fg <int> - set foreground color to specified;
+                            * 0 can be used for default fg;
+                          * bold/nobold - set or reset bold mode;
+                          * reverse/noreverse - set or reset reverse mode;
+                          * reset - completely resets mode;
+                          For example, run orgalorg with '-vv' flag.
+                          Two embedded themes are available by their names:
+                          ` + themeDark + ` and ` + themeLight + `
+                          [default: ` + themeDark + `]
+    --log-format <f>     Format for the logs.
+                          Same, as above, with additional functions:
+                          * log <placeholder-spec> - inserts lorg placeholder
+                            specification;
+                          * level <level> <format> - insert in place specified
+                            format if log level matches specified level.
+                          [default: ` + themeDark + `]
+    --no-colors          Do not use colors.
 
 Timeout options:
     --conn-timeout <t>   Remote host connection timeout in milliseconds.
@@ -201,7 +233,11 @@ var (
 	verbose = verbosityNormal
 	format  = outputFormatText
 
-	pool *threadPool
+	pool   *threadPool
+	status *statusBar
+
+	isOutputOnTTY  = false
+	isColorEnabled = false
 )
 
 var (
@@ -209,11 +245,9 @@ var (
 )
 
 func main() {
-	logger.SetFormat(lorg.NewFormat("* ${time} ${level:[%s]:right:true} %s"))
-
-	usage, err := formatUsage(usage)
+	usage, err := formatUsage(string(usage))
 	if err != nil {
-		logger.Error(hierr.Errorf(
+		errorf("%s", hierr.Errorf(
 			err,
 			`can't format usage`,
 		))
@@ -230,7 +264,16 @@ func main() {
 
 	setLoggerVerbosity(verbose, logger)
 
-	format = parseOutputFormat(args)
+	format, isOutputOnTTY, isColorEnabled = parseOutputFormat(args)
+
+	logFormat, err := parseLogFormat(args)
+	if err != nil {
+		errorf("%s", err)
+
+		exit(1)
+	}
+
+	setupLogger(logFormat)
 
 	setLoggerOutputFormat(format, logger)
 
@@ -243,6 +286,10 @@ func main() {
 	}
 
 	pool = newThreadPool(poolSize)
+
+	statusFormat, err := parseStatusBarFormat(args)
+
+	status = newStatusBar(statusFormat)
 
 	switch {
 	case args["--upload"].(bool):
@@ -259,27 +306,6 @@ func main() {
 		errorf("%s", err)
 
 		exit(1)
-	}
-}
-
-func setLoggerOutputFormat(format outputFormat, logger *lorg.Log) {
-	if format == outputFormatJSON {
-		logger.SetOutput(&jsonOutputWriter{
-			stream: `stderr`,
-			node:   ``,
-			output: os.Stderr,
-		})
-	}
-}
-
-func setLoggerVerbosity(level verbosity, logger *lorg.Log) {
-	logger.SetLevel(lorg.LevelWarning)
-
-	switch {
-	case level >= verbosityDebug:
-		logger.SetLevel(lorg.LevelDebug)
-	case level >= verbosityNormal:
-		logger.SetLevel(lorg.LevelInfo)
 	}
 }
 
@@ -580,6 +606,8 @@ func connectAndLock(
 		noLockFail = args["--no-lock-fail"].(bool)
 	)
 
+	status.SetPhase(statusBarPhaseConnecting)
+
 	addresses, err := parseAddresses(hosts, defaultUser, fromStdin)
 	if err != nil {
 		return nil, hierr.Errorf(
@@ -587,6 +615,8 @@ func connectAndLock(
 			`can't parse all specified addresses`,
 		)
 	}
+
+	status.SetTotal(len(addresses))
 
 	timeouts, err := makeTimeouts(args)
 	if err != nil {
@@ -746,7 +776,9 @@ func generateRunID() string {
 }
 
 func readPassword(prompt string) (string, error) {
-	fmt.Fprintf(os.Stderr, sshPasswordPrompt)
+	if isOutputOnTTY {
+		fmt.Fprintf(os.Stderr, sshPasswordPrompt)
+	}
 
 	tty, err := os.Open("/dev/tty")
 	if err != nil {
@@ -765,7 +797,9 @@ func readPassword(prompt string) (string, error) {
 		)
 	}
 
-	fmt.Fprintln(os.Stderr)
+	if isOutputOnTTY {
+		fmt.Fprintln(os.Stderr)
+	}
 
 	return string(password), nil
 }

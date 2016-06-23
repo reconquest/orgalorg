@@ -22,6 +22,8 @@ func (runner *remoteExecutionRunner) run(
 	cluster *distributedLock,
 	setupCallback func(*remoteExecutionNode),
 ) (*remoteExecution, error) {
+	status.SetPhase(statusBarPhaseExecuting)
+
 	command := joinCommand(runner.command)
 
 	if runner.directory != "" {
@@ -72,8 +74,7 @@ func joinCommand(command []string) string {
 }
 
 func escapeCommandArgument(argument string) string {
-	argument = strings.Replace(argument, `\`, `\\`, -1)
-	argument = strings.Replace(argument, ` `, `\ `, -1)
+	argument = strings.Replace(argument, `'`, `'\''`, -1)
 
 	return argument
 }
@@ -82,6 +83,7 @@ func escapeCommandArgumentStrict(argument string) string {
 	argument = strings.Replace(argument, `\`, `\\`, -1)
 	argument = strings.Replace(argument, "`", "\\`", -1)
 	argument = strings.Replace(argument, `"`, `\"`, -1)
+	argument = strings.Replace(argument, `'`, `'\''`, -1)
 	argument = strings.Replace(argument, `$`, `\$`, -1)
 
 	return `"` + argument + `"`

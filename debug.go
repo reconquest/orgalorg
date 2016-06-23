@@ -2,10 +2,58 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
+	"github.com/fatih/color"
+
+	"github.com/kovetskiy/lorg"
 	"github.com/seletskiy/hierr"
 )
+
+func setupLogger(format *lorg.Format) {
+	logger.SetFormat(format)
+}
+
+func setLoggerOutputFormat(format outputFormat, logger *lorg.Log) {
+	if format == outputFormatJSON {
+		logger.SetOutput(&jsonOutputWriter{
+			stream: `stderr`,
+			node:   ``,
+			output: os.Stderr,
+		})
+	}
+}
+
+func setLoggerVerbosity(level verbosity, logger *lorg.Log) {
+	logger.SetLevel(lorg.LevelWarning)
+
+	switch {
+	case level >= verbosityTrace:
+		logger.SetLevel(lorg.LevelTrace)
+
+	case level >= verbosityDebug:
+		logger.SetLevel(lorg.LevelDebug)
+
+	case level >= verbosityNormal:
+		logger.SetLevel(lorg.LevelInfo)
+	}
+}
+
+func colorize(
+	attributes ...color.Attribute,
+) string {
+	if !isColorEnabled {
+		return ""
+	}
+
+	sequence := []string{}
+	for _, attribute := range attributes {
+		sequence = append(sequence, fmt.Sprint(attribute))
+	}
+
+	return fmt.Sprintf("\x1b[%sm", strings.Join(sequence, ";"))
+}
 
 func tracef(format string, args ...interface{}) {
 	if verbose < verbosityTrace {
@@ -14,19 +62,25 @@ func tracef(format string, args ...interface{}) {
 
 	args = serializeErrors(args)
 
-	logger.Debugf(format, args...)
+	logger.Tracef(format, args...)
+
+	drawStatus()
 }
 
 func debugf(format string, args ...interface{}) {
 	args = serializeErrors(args)
 
 	logger.Debugf(format, args...)
+
+	drawStatus()
 }
 
 func infof(format string, args ...interface{}) {
 	args = serializeErrors(args)
 
 	logger.Infof(format, args...)
+
+	drawStatus()
 }
 
 func warningf(format string, args ...interface{}) {
@@ -37,6 +91,8 @@ func warningf(format string, args ...interface{}) {
 	}
 
 	logger.Warningf(format, args...)
+
+	drawStatus()
 }
 
 func errorf(format string, args ...interface{}) {
@@ -53,6 +109,42 @@ func serializeErrors(args []interface{}) []interface{} {
 	}
 
 	return args
+}
+
+func shouldDrawStatus() bool {
+	if !isOutputOnTTY {
+		return false
+	}
+
+	if format != outputFormatText {
+		return false
+	}
+
+	if verbose <= verbosityQuiet {
+		return false
+	}
+
+	if status == nil {
+		return false
+	}
+
+	return true
+}
+
+func drawStatus() {
+	if !shouldDrawStatus() {
+		return
+	}
+
+	status.Draw(os.Stderr)
+}
+
+func clearStatus() {
+	if !shouldDrawStatus() {
+		return
+	}
+
+	status.Clear(os.Stderr)
 }
 
 func serializeError(err error) string {
