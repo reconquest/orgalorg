@@ -10,11 +10,12 @@ var (
 )
 
 type remoteExecutionRunner struct {
-	shell     string
-	sudo      bool
 	command   []string
 	args      []string
+	shell     string
 	directory string
+	sudo      bool
+	serial    bool
 }
 
 func (runner *remoteExecutionRunner) run(
@@ -38,7 +39,7 @@ func (runner *remoteExecutionRunner) run(
 		command = joinCommand(sudoCommand) + " " + command
 	}
 
-	return runRemoteExecution(cluster, command, setupCallback)
+	return runRemoteExecution(cluster, command, setupCallback, runner.serial)
 }
 
 func wrapCommandIntoShell(command string, shell string, args []string) string {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/seletskiy/hierr"
 )
@@ -61,8 +62,30 @@ func serializeError(err error) string {
 
 	if hierarchicalError, ok := err.(hierr.Error); ok {
 		serializedError := fmt.Sprint(hierarchicalError.Nested)
-		if nested, ok := hierarchicalError.Nested.(error); ok {
+		switch nested := hierarchicalError.Nested.(type) {
+		case error:
 			serializedError = serializeError(nested)
+
+		case []hierr.NestedError:
+			serializeErrorParts := []string{}
+
+			for _, nestedPart := range nested {
+				serializedPart := fmt.Sprint(nestedPart)
+				switch part := nestedPart.(type) {
+				case error:
+					serializedPart = serializeError(part)
+
+				case string:
+					serializedPart = part
+				}
+
+				serializeErrorParts = append(
+					serializeErrorParts,
+					serializedPart,
+				)
+			}
+
+			serializedError = strings.Join(serializeErrorParts, "; ")
 		}
 
 		return hierarchicalError.Message + ": " + serializedError

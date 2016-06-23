@@ -18,6 +18,7 @@ func startArchiveReceivers(
 	cluster *distributedLock,
 	rootDir string,
 	sudo bool,
+	serial bool,
 ) (*remoteExecution, error) {
 	var (
 		command = []string{}
@@ -39,7 +40,7 @@ func startArchiveReceivers(
 
 	logMutex := &sync.Mutex{}
 
-	runner := &remoteExecutionRunner{command: command}
+	runner := &remoteExecutionRunner{command: command, serial: serial}
 
 	execution, err := runner.run(
 		cluster,

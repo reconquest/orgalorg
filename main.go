@@ -122,6 +122,10 @@ Options:
     -u --user <user>     Username used for connecting to all hosts by default.
                           [default: $USER]
     -i --stdin <file>    Pass specified file as input for the command.
+    -l --serial          Run commands in serial mode, so they output will not
+                          interleave each other. Only one node is allowed to
+                          output, all other nodes will wait that node to
+                          finish.
     -q --quiet           Be quiet, in command mode do not use prefixes.
     -v --verbose         Print debug information on stderr.
     -V --version         Print program version.
@@ -205,7 +209,7 @@ var (
 )
 
 func main() {
-	logger.SetFormat(lorg.NewFormat("* ${time} ${level:[%s]:right} %s"))
+	logger.SetFormat(lorg.NewFormat("* ${time} ${level:[%s]:right:true} %s"))
 
 	usage, err := formatUsage(usage)
 	if err != nil {
@@ -304,6 +308,7 @@ func handleEvaluate(args map[string]interface{}) error {
 		rootDir, _ = args["--root"].(string)
 		sudo       = args["--sudo"].(bool)
 		shell      = args["--shell"].(string)
+		serial     = args["--serial"].(bool)
 
 		command = args["<command>"].([]string)
 	)
@@ -320,6 +325,7 @@ func handleEvaluate(args map[string]interface{}) error {
 		sudo:      sudo,
 		command:   command,
 		directory: rootDir,
+		serial:    serial,
 	}
 
 	return run(cluster, runner, stdin)
@@ -374,7 +380,9 @@ func run(
 	if err != nil {
 		return hierr.Errorf(
 			err,
-			`remote execution failed`,
+			`remote execution failed, because one of `+
+				`command has been exited with non-zero exit `+
+				`code at least on one node`,
 		)
 	}
 
@@ -396,7 +404,8 @@ func handleSynchronize(args map[string]interface{}) error {
 
 		shell = args["--shell"].(string)
 
-		sudo = args["--sudo"].(bool)
+		sudo   = args["--sudo"].(bool)
+		serial = args["--serial"].(bool)
 
 		fileSources = args["<files>"].([]string)
 	)
@@ -469,6 +478,7 @@ func handleSynchronize(args map[string]interface{}) error {
 		command:   command,
 		args:      commandArgs,
 		directory: rootDir,
+		serial:    serial,
 	}
 
 	if isSimpleCommand {
@@ -497,6 +507,8 @@ func upload(
 
 		preserveUID = !args["--no-preserve-uid"].(bool)
 		preserveGID = !args["--no-preserve-gid"].(bool)
+
+		serial = args["--serial"].(bool)
 	)
 
 	if rootDir == "" {
@@ -505,7 +517,7 @@ func upload(
 
 	debugf(`file upload started into: '%s'`, rootDir)
 
-	receivers, err := startArchiveReceivers(cluster, rootDir, sudo)
+	receivers, err := startArchiveReceivers(cluster, rootDir, sudo, serial)
 	if err != nil {
 		return hierr.Errorf(
 			err,

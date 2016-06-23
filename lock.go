@@ -56,7 +56,6 @@ func acquireDistributedLock(
 					err = node.lock(lockFile)
 					if err != nil {
 						if noLockFail {
-							failed = true
 							warningf("%s", err)
 						} else {
 							errors <- err
@@ -96,7 +95,7 @@ func acquireDistributedLock(
 	for range addresses {
 		err := <-errors
 		if err != nil {
-			erronous += 1
+			erronous++
 
 			topError = hierr.Push(topError, err)
 		}
@@ -127,6 +126,9 @@ func connectToNode(
 
 	go func() {
 		select {
+		case <-done:
+			return
+
 		case <-time.After(longConnectionWarningTimeout):
 			warningf(
 				"still connecting to address after %s: %s",
@@ -134,10 +136,12 @@ func connectToNode(
 				address,
 			)
 
-		case <-done:
+			<-done
 		}
+	}()
 
-		return
+	defer func() {
+		done <- struct{}{}
 	}()
 
 	runner, err := runnerFactory(address)
@@ -148,8 +152,6 @@ func connectToNode(
 			address,
 		)
 	}
-
-	done <- struct{}{}
 
 	return &distributedLockNode{
 		address: address,

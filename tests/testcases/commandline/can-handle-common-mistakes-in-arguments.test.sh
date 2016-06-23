@@ -5,10 +5,6 @@ tests:not tests:ensure :orgalorg -o ./blah -C echo blah
 tests:assert-stderr-re "can't open.*blah"
 tests:assert-stderr-re "blah.*no such file or directory"
 
-tests:not tests:ensure :orgalorg -p -s -C echo blah
-tests:assert-stderr-re "incompatible options"
-tests:assert-stderr-re "password authentication is not possible.*stdin"
-
 tests:not tests:ensure :orgalorg -o blah --send-timeout=wazup -C echo dunno
 tests:assert-stderr-re "send timeout to number"
 

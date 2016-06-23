@@ -32,15 +32,21 @@ func runRemoteExecution(
 	lockedNodes *distributedLock,
 	command string,
 	setupCallback func(*remoteExecutionNode),
+	serial bool,
 ) (*remoteExecution, error) {
 	var (
 		stdins = []io.WriteCloser{}
 
 		logLock    = &sync.Mutex{}
 		stdinsLock = &sync.Mutex{}
+		outputLock = &sync.Mutex{}
 
 		nodes = &remoteNodes{&sync.Mutex{}, remoteNodesMap{}}
 	)
+
+	if !serial {
+		outputLock = nil
+	}
 
 	errors := make(chan error, 0)
 	for _, node := range lockedNodes.nodes {
@@ -59,6 +65,7 @@ func runRemoteExecution(
 					node,
 					command,
 					logLock,
+					outputLock,
 				)
 				if err != nil {
 					errors <- err
@@ -115,7 +122,8 @@ func runRemoteExecution(
 func runRemoteExecutionNode(
 	node *distributedLockNode,
 	command string,
-	logLock *sync.Mutex,
+	logLock sync.Locker,
+	outputLock sync.Locker,
 ) (*remoteExecutionNode, error) {
 	remoteCommand, err := node.runner.Command(command)
 	if err != nil {
@@ -174,7 +182,7 @@ func runRemoteExecutionNode(
 		stdout = lineflushwriter.New(
 			prefixwriter.New(
 				newDebugWriter(logger),
-				node.String()+" {cmd} <stdout> ",
+				"{cmd} <stdout> "+node.String()+" ",
 			),
 			logLock,
 			false,
@@ -183,18 +191,25 @@ func runRemoteExecutionNode(
 		stderr = lineflushwriter.New(
 			prefixwriter.New(
 				newDebugWriter(logger),
-				node.String()+" {cmd} <stderr> ",
+				"{cmd} <stderr> "+node.String()+" ",
 			),
 			logLock,
 			false,
 		)
 	}
 
+	if outputLock != (*sync.Mutex)(nil) {
+		sharedLock := newSharedLock(outputLock, 2)
+
+		stdout = newLockedWriter(stdout, sharedLock)
+		stderr = newLockedWriter(stderr, sharedLock)
+	}
+
 	stdin, err := remoteCommand.StdinPipe()
 	if err != nil {
 		return nil, hierr.Errorf(
 			err,
-			`can't get stdin from archive receiver command`,
+			`can't get stdin from remote command`,
 		)
 	}
 
