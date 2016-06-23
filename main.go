@@ -157,7 +157,7 @@ Advanced options:
                           shell wrapper will be used. If any args are given
                           using '-g', they will be appended to shell
                           invocation.
-                          [default: bash -c $'{}']
+                          [default: bash -c '{}']
     -d --threads <n>     Set threads count which will be used for connection,
                           locking and execution commands.
                           [default: 16].
