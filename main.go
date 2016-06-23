@@ -386,7 +386,7 @@ func run(
 		}
 	}
 
-	debugf(`waiting execution to finish`)
+	debugf(`commands are running, waiting for finish`)
 
 	err = execution.stdin.Close()
 	if err != nil {
@@ -580,7 +580,6 @@ func connectAndLock(
 		sendTimeout = args["--send-timeout"].(string)
 		defaultUser = args["--user"].(string)
 
-		failOnError = !args["--no-lock-fail"].(bool)
 		askPassword = args["--password"].(bool)
 		fromStdin   = args["--read-stdin"].(bool)
 
@@ -589,6 +588,7 @@ func connectAndLock(
 		lockFile, _   = args["--lock-file"].(string)
 
 		noConnFail = args["--no-conn-fail"].(bool)
+		noLockFail = args["--no-lock-fail"].(bool)
 	)
 
 	addresses, err := parseAddresses(hosts, defaultUser, fromStdin)
@@ -631,7 +631,7 @@ func connectAndLock(
 		lockFile,
 		runners,
 		addresses,
-		failOnError,
+		noLockFail,
 		noConnFail,
 	)
 	if err != nil {

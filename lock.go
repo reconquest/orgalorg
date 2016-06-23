@@ -1,10 +1,16 @@
 package main
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/seletskiy/hierr"
+)
+
+const (
+	longConnectionWarningTimeout = 2 * time.Second
 )
 
 // acquireDistributedLock tries to acquire atomic file lock on each of
@@ -16,68 +22,94 @@ func acquireDistributedLock(
 	lockFile string,
 	runnerFactory runnerFactory,
 	addresses []address,
-	failOnError bool,
+	noLockFail bool,
 	noConnFail bool,
 ) (*distributedLock, error) {
 	var (
-		cluster = &distributedLock{
-			failOnError: failOnError,
-		}
+		cluster = &distributedLock{}
 
 		connections = int64(0)
 		failures    = int64(0)
 
 		errors = make(chan error, 0)
 
-		mutex = &sync.Mutex{}
+		nodeAddMutex = &sync.Mutex{}
 	)
 
 	for _, nodeAddress := range addresses {
 		go func(nodeAddress address) {
 			pool.run(func() {
-				err := connectToNode(cluster, runnerFactory, nodeAddress, mutex)
+				failed := false
 
+				node, err := connectToNode(cluster, runnerFactory, nodeAddress)
 				if err != nil {
 					atomic.AddInt64(&failures, 1)
 
 					if noConnFail {
+						failed = true
 						warningf("%s", err)
-						errors <- nil
 					} else {
 						errors <- err
+						return
 					}
-
-					return
+				} else {
+					err = node.lock(lockFile)
+					if err != nil {
+						if noLockFail {
+							failed = true
+							warningf("%s", err)
+						} else {
+							errors <- err
+							return
+						}
+					}
 				}
 
-				debugf(`%4d/%d (failed: %d) connection established: %s`,
-					atomic.AddInt64(&connections, 1),
+				status := "established"
+				if failed {
+					status = "failed"
+				} else {
+					atomic.AddInt64(&connections, 1)
+
+					nodeAddMutex.Lock()
+					defer nodeAddMutex.Unlock()
+
+					cluster.nodes = append(cluster.nodes, node)
+				}
+
+				debugf(
+					`%4d/%d (%d failed) connection %s: %s`,
+					connections,
 					int64(len(addresses))-failures,
 					failures,
+					status,
 					nodeAddress,
 				)
 
-				errors <- err
+				errors <- nil
 			})
 		}(nodeAddress)
 	}
 
+	erronous := 0
+	topError := hierr.Push(`can't connect to nodes`)
 	for range addresses {
 		err := <-errors
 		if err != nil {
-			return nil, hierr.Errorf(
-				err,
-				`can't acquire lock`,
-			)
+			erronous += 1
+
+			topError = hierr.Push(topError, err)
 		}
 	}
 
-	err := cluster.acquire(lockFile)
-	if err != nil {
-		return nil, hierr.Errorf(
-			err,
-			`can't acquire global cluster lock on %d hosts`,
-			len(addresses),
+	if erronous > 0 {
+		return nil, hierr.Push(
+			fmt.Errorf(
+				`connection to %d of %d nodes failed`,
+				erronous,
+				len(addresses),
+			),
+			topError,
 		)
 	}
 
@@ -88,23 +120,39 @@ func connectToNode(
 	cluster *distributedLock,
 	runnerFactory runnerFactory,
 	address address,
-	nodeAddMutex sync.Locker,
-) error {
+) (*distributedLockNode, error) {
 	tracef(`connecting to address: '%s'`, address)
+
+	done := make(chan struct{}, 0)
+
+	go func() {
+		select {
+		case <-time.After(longConnectionWarningTimeout):
+			warningf(
+				"still connecting to address after %s: %s",
+				longConnectionWarningTimeout,
+				address,
+			)
+
+		case <-done:
+		}
+
+		return
+	}()
 
 	runner, err := runnerFactory(address)
 	if err != nil {
-		return hierr.Errorf(
+		return nil, hierr.Errorf(
 			err,
 			`can't connect to address: %s`,
 			address,
 		)
 	}
 
-	nodeAddMutex.Lock()
-	defer nodeAddMutex.Unlock()
+	done <- struct{}{}
 
-	cluster.addNodeRunner(runner, address)
-
-	return nil
+	return &distributedLockNode{
+		address: address,
+		runner:  runner,
+	}, nil
 }
