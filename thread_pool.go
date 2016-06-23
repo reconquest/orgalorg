@@ -8,6 +8,8 @@ import (
 
 type threadPool struct {
 	available chan struct{}
+
+	size int
 }
 
 func newThreadPool(size int) *threadPool {
@@ -18,6 +20,7 @@ func newThreadPool(size int) *threadPool {
 
 	return &threadPool{
 		available,
+		size,
 	}
 }
 
@@ -42,8 +45,6 @@ func createThreadPool(args map[string]interface{}) (*threadPool, error) {
 			`can't parse threads count`,
 		)
 	}
-
-	debugf(`using %d threads`, poolSize)
 
 	return newThreadPool(poolSize), nil
 }

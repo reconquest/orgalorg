@@ -613,6 +613,8 @@ func connectAndLock(
 		)
 	}
 
+	debugf(`using %d threads`, pool.size)
+
 	debugf(`connecting to %d nodes`, len(addresses))
 
 	if lockFile == "" {
