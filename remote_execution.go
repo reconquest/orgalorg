@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/seletskiy/hierr"
@@ -23,24 +24,44 @@ func (execution *remoteExecution) wait() error {
 	results := make(chan *remoteExecutionResult, 0)
 	for _, node := range execution.nodes {
 		go func(node *remoteExecutionNode) {
-			results <- &remoteExecutionResult{node, node.wait()}
+			pool.run(func() {
+				results <- &remoteExecutionResult{node, node.wait()}
+			})
 		}(node)
 	}
+
+	executionErrors := fmt.Errorf(
+		`can't run remote commands on %d nodes`,
+		len(execution.nodes),
+	)
+
+	erroneous := false
 
 	for range execution.nodes {
 		result := <-results
 		if result.err != nil {
-			return hierr.Errorf(
-				result.err,
-				`%s has finished with error`,
-				result.node.node.String(),
+			executionErrors = hierr.Push(
+				executionErrors,
+				hierr.Errorf(
+					result.err,
+					`%s has finished with error`,
+					result.node.node.String(),
+				),
 			)
+
+			erroneous = true
+
+			continue
 		}
 
 		tracef(
 			`%s has successfully finished execution`,
 			result.node.node.String(),
 		)
+	}
+
+	if erroneous {
+		return executionErrors
 	}
 
 	return nil

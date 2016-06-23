@@ -49,59 +49,62 @@ func runRemoteExecution(
 	errors := make(chan error, 0)
 	for _, node := range lockedNodes.nodes {
 		go func(node *distributedLockNode) {
-			tracef(
-				"%s",
-				hierr.Errorf(
-					command,
-					"%s starting command",
-					node.String(),
-				).Error(),
-			)
-
-			remoteNode, err := runRemoteExecutionNode(
-				node,
-				command,
-				logLock,
-			)
-			if err != nil {
-				errors <- err
-				return
-			}
-
-			if setupCallback != nil {
-				setupCallback(remoteNode)
-			}
-
-			remoteNode.command.SetStdout(remoteNode.stdout)
-			remoteNode.command.SetStderr(remoteNode.stderr)
-
-			err = remoteNode.command.Start()
-			if err != nil {
-				errors <- hierr.Errorf(
-					err,
-					`can't start remote command`,
+			pool.run(func() {
+				tracef(
+					"%s",
+					hierr.Errorf(
+						command,
+						"%s starting command",
+						node.String(),
+					).Error(),
 				)
 
-				return
-			}
+				remoteNode, err := runRemoteExecutionNode(
+					node,
+					command,
+					logLock,
+				)
+				if err != nil {
+					errors <- err
+					return
+				}
 
-			nodes.Set(node, remoteNode)
+				if setupCallback != nil {
+					setupCallback(remoteNode)
+				}
 
-			stdinsLock.Lock()
-			defer stdinsLock.Unlock()
+				remoteNode.command.SetStdout(remoteNode.stdout)
+				remoteNode.command.SetStderr(remoteNode.stderr)
 
-			stdins = append(stdins, remoteNode.stdin)
+				err = remoteNode.command.Start()
+				if err != nil {
+					errors <- hierr.Errorf(
+						err,
+						`can't start remote command`,
+					)
 
-			errors <- nil
+					return
+				}
+
+				nodes.Set(node, remoteNode)
+
+				stdinsLock.Lock()
+				defer stdinsLock.Unlock()
+
+				stdins = append(stdins, remoteNode.stdin)
+
+				errors <- nil
+			})
 		}(node)
 	}
 
-	for range lockedNodes.nodes {
+	for _, node := range lockedNodes.nodes {
 		err := <-errors
 		if err != nil {
 			return nil, hierr.Errorf(
 				err,
-				`can't run remote command on node`,
+				`remote execution failed on node: '%s'`,
+				node,
 			)
 		}
 	}

@@ -24,34 +24,41 @@ func acquireDistributedLock(
 			failOnError: failOnError,
 		}
 
-		nodeIndex = int64(0)
-		errors    = make(chan error, 0)
+		connectedCount = int64(0)
+		failedCount    = int64(0)
+
+		errors = make(chan error, 0)
 
 		mutex = &sync.Mutex{}
 	)
 
 	for _, nodeAddress := range addresses {
 		go func(nodeAddress address) {
-			err := connectToNode(cluster, runnerFactory, nodeAddress, mutex)
+			pool.run(func() {
+				err := connectToNode(cluster, runnerFactory, nodeAddress, mutex)
 
-			if err != nil {
-				if noConnFail {
-					warningf("%s", err)
-					errors <- nil
-				} else {
-					errors <- err
+				if err != nil {
+					atomic.AddInt64(&failedCount, 1)
+
+					if noConnFail {
+						warningf("%s", err)
+						errors <- nil
+					} else {
+						errors <- err
+					}
+
+					return
 				}
 
-				return
-			}
+				debugf(`%4d/%d (failed: %d) connection established: %s`,
+					atomic.AddInt64(&connectedCount, 1),
+					int64(len(addresses))-failedCount,
+					failedCount,
+					nodeAddress,
+				)
 
-			debugf(`%4d/%d connection established: %s`,
-				atomic.AddInt64(&nodeIndex, 1),
-				len(addresses),
-				nodeAddress,
-			)
-
-			errors <- err
+				errors <- err
+			})
 		}(nodeAddress)
 	}
 
@@ -89,7 +96,7 @@ func connectToNode(
 	if err != nil {
 		return hierr.Errorf(
 			err,
-			`can't create runner for address: %s`,
+			`can't connect to address: %s`,
 			address,
 		)
 	}
