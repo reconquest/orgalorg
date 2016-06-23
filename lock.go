@@ -24,8 +24,8 @@ func acquireDistributedLock(
 			failOnError: failOnError,
 		}
 
-		connectedCount = int64(0)
-		failedCount    = int64(0)
+		connections = int64(0)
+		failures    = int64(0)
 
 		errors = make(chan error, 0)
 
@@ -38,7 +38,7 @@ func acquireDistributedLock(
 				err := connectToNode(cluster, runnerFactory, nodeAddress, mutex)
 
 				if err != nil {
-					atomic.AddInt64(&failedCount, 1)
+					atomic.AddInt64(&failures, 1)
 
 					if noConnFail {
 						warningf("%s", err)
@@ -51,9 +51,9 @@ func acquireDistributedLock(
 				}
 
 				debugf(`%4d/%d (failed: %d) connection established: %s`,
-					atomic.AddInt64(&connectedCount, 1),
-					int64(len(addresses))-failedCount,
-					failedCount,
+					atomic.AddInt64(&connections, 1),
+					int64(len(addresses))-failures,
+					failures,
 					nodeAddress,
 				)
 
