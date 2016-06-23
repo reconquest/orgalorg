@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"golang.org/x/crypto/ssh/terminal"
@@ -232,16 +231,6 @@ func main() {
 
 	setLoggerOutputFormat(format, logger)
 
-	err = checkOptionsCompatibility(args)
-	if err != nil {
-		errorf("%s", hierr.Errorf(
-			err,
-			`incompatible options given`,
-		))
-
-		exit(1)
-	}
-
 	pool, err = createThreadPool(args)
 	if err != nil {
 		errorf("%s", hierr.Errorf(
@@ -306,17 +295,6 @@ func formatUsage(template string) (string, error) {
 	usage = strings.Replace(usage, "$LOCK", defaultLockFile, -1)
 
 	return usage, nil
-}
-
-func checkOptionsCompatibility(args map[string]interface{}) error {
-	if args["--read-stdin"].(bool) && args["--password"].(bool) {
-		return fmt.Errorf(
-			`'-s' and '-p': password authentication is not possible ` +
-				`while reading hosts list from stdin`,
-		)
-	}
-
-	return nil
 }
 
 func handleEvaluate(args map[string]interface{}) error {
@@ -755,7 +733,15 @@ func generateRunID() string {
 func readPassword(prompt string) (string, error) {
 	fmt.Fprintf(os.Stderr, sshPasswordPrompt)
 
-	password, err := terminal.ReadPassword(syscall.Stdin)
+	tty, err := os.Open("/dev/tty")
+	if err != nil {
+		return "", hierr.Errorf(
+			err,
+			`can't open /dev/tty for reading`,
+		)
+	}
+
+	password, err := terminal.ReadPassword(int(tty.Fd()))
 	if err != nil {
 		return "", hierr.Errorf(
 			err,
