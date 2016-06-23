@@ -33,18 +33,18 @@ func (pool *threadPool) run(task func()) {
 	task()
 }
 
-func createThreadPool(args map[string]interface{}) (*threadPool, error) {
+func parseThreadPoolSize(args map[string]interface{}) (int, error) {
 	var (
 		poolSizeRaw = args["--threads"].(string)
 	)
 
 	poolSize, err := strconv.Atoi(poolSizeRaw)
 	if err != nil {
-		return nil, hierr.Errorf(
+		return 0, hierr.Errorf(
 			err,
 			`can't parse threads count`,
 		)
 	}
 
-	return newThreadPool(poolSize), nil
+	return poolSize, nil
 }

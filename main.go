@@ -242,13 +242,15 @@ func main() {
 		exit(1)
 	}
 
-	pool, err = createThreadPool(args)
+	poolSize, err := parseThreadPoolSize(args)
 	if err != nil {
 		errorf("%s", hierr.Errorf(
 			err,
-			`can't create thread pool`,
+			`--threads given invalid value`,
 		))
 	}
+
+	pool = newThreadPool(poolSize)
 
 	switch {
 	case args["--upload"].(bool):

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 
 	"github.com/seletskiy/hierr"
@@ -29,8 +30,7 @@ func (execution *remoteExecution) wait() error {
 		}(node)
 	}
 
-	executionErrors := hierr.Errorf(
-		nil,
+	executionErrors := fmt.Errorf(
 		`can't run remote commands on %d nodes`,
 		len(execution.nodes),
 	)
