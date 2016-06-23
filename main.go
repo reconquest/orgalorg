@@ -98,8 +98,6 @@ Required options:
                           considered file which should be used to read hosts
                           from.
     -s --read-stdin      Read hosts from stdin in addition to other flags.
-                          That flag is not compatible with '-p', use '-o',
-                          if you want to pass long hosts list.
 
 Options:
     -h --help            Show this help.
@@ -108,7 +106,8 @@ Options:
                           authentication.
                           [default: $HOME/.ssh/id_rsa]
     -p --password        Enable password authentication.
-                          Exclude '-k' and '-s' options.
+                          Exclude '-k' option.
+                          TTY is required for reading password.
     -x --sudo            Obtain root via 'sudo -n'.
                           By default, orgalorg will not obtain root and do
                           all actions from specified user. To change that
