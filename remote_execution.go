@@ -35,7 +35,7 @@ func (execution *remoteExecution) wait() error {
 		len(execution.nodes),
 	)
 
-	errornous := false
+	erroneous := false
 
 	for range execution.nodes {
 		result := <-results
@@ -49,7 +49,7 @@ func (execution *remoteExecution) wait() error {
 				),
 			)
 
-			errornous = true
+			erroneous = true
 
 			continue
 		}
@@ -60,7 +60,7 @@ func (execution *remoteExecution) wait() error {
 		)
 	}
 
-	if errornous {
+	if erroneous {
 		return executionErrors
 	}
 
