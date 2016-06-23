@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"golang.org/x/crypto/ssh/terminal"
@@ -99,8 +98,6 @@ Required options:
                           considered file which should be used to read hosts
                           from.
     -s --read-stdin      Read hosts from stdin in addition to other flags.
-                          That flag is not compatible with '-p', use '-o',
-                          if you want to pass long hosts list.
 
 Options:
     -h --help            Show this help.
@@ -109,7 +106,8 @@ Options:
                           authentication.
                           [default: $HOME/.ssh/id_rsa]
     -p --password        Enable password authentication.
-                          Exclude '-k' and '-s' options.
+                          Exclude '-k' option.
+                          TTY is required for reading password.
     -x --sudo            Obtain root via 'sudo -n'.
                           By default, orgalorg will not obtain root and do
                           all actions from specified user. To change that
@@ -232,16 +230,6 @@ func main() {
 
 	setLoggerOutputFormat(format, logger)
 
-	err = checkOptionsCompatibility(args)
-	if err != nil {
-		errorf("%s", hierr.Errorf(
-			err,
-			`incompatible options given`,
-		))
-
-		exit(1)
-	}
-
 	poolSize, err := parseThreadPoolSize(args)
 	if err != nil {
 		errorf("%s", hierr.Errorf(
@@ -310,17 +298,6 @@ func formatUsage(template string) (string, error) {
 	return usage, nil
 }
 
-func checkOptionsCompatibility(args map[string]interface{}) error {
-	if args["--read-stdin"].(bool) && args["--password"].(bool) {
-		return fmt.Errorf(
-			`'-s' and '-p': password authentication is not possible ` +
-				`while reading hosts list from stdin`,
-		)
-	}
-
-	return nil
-}
-
 func handleEvaluate(args map[string]interface{}) error {
 	var (
 		stdin, _   = args["--stdin"].(string)
@@ -331,10 +308,6 @@ func handleEvaluate(args map[string]interface{}) error {
 		command = args["<command>"].([]string)
 	)
 
-	if sudo {
-		command = append(sudoCommand, command...)
-	}
-
 	canceler := sync.NewCond(&sync.Mutex{})
 
 	cluster, err := connectAndLock(args, canceler)
@@ -344,6 +317,7 @@ func handleEvaluate(args map[string]interface{}) error {
 
 	runner := &remoteExecutionRunner{
 		shell:     shell,
+		sudo:      sudo,
 		command:   command,
 		directory: rootDir,
 	}
@@ -422,6 +396,8 @@ func handleSynchronize(args map[string]interface{}) error {
 
 		shell = args["--shell"].(string)
 
+		sudo = args["--sudo"].(bool)
+
 		fileSources = args["<files>"].([]string)
 	)
 
@@ -489,6 +465,7 @@ func handleSynchronize(args map[string]interface{}) error {
 
 	runner := &remoteExecutionRunner{
 		shell:     shell,
+		sudo:      sudo,
 		command:   command,
 		args:      commandArgs,
 		directory: rootDir,
@@ -759,7 +736,16 @@ func generateRunID() string {
 func readPassword(prompt string) (string, error) {
 	fmt.Fprintf(os.Stderr, sshPasswordPrompt)
 
-	password, err := terminal.ReadPassword(syscall.Stdin)
+	tty, err := os.Open("/dev/tty")
+	if err != nil {
+		return "", hierr.Errorf(
+			err,
+			`TTY is required for reading password, `+
+				`but /dev/tty can't be opened`,
+		)
+	}
+
+	password, err := terminal.ReadPassword(int(tty.Fd()))
 	if err != nil {
 		return "", hierr.Errorf(
 			err,

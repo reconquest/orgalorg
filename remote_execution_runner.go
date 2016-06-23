@@ -1,9 +1,17 @@
 package main
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
+
+var (
+	sudoCommand = []string{"sudo", "-n", "-E", "-H"}
+)
 
 type remoteExecutionRunner struct {
 	shell     string
+	sudo      bool
 	command   []string
 	args      []string
 	directory string
@@ -15,14 +23,19 @@ func (runner *remoteExecutionRunner) run(
 ) (*remoteExecution, error) {
 	command := joinCommand(runner.command)
 
+	if runner.directory != "" {
+		command = fmt.Sprintf("cd %s && { %s; }",
+			escapeCommandArgumentStrict(runner.directory),
+			command,
+		)
+	}
+
 	if runner.shell != "" {
 		command = wrapCommandIntoShell(command, runner.shell, runner.args)
 	}
 
-	if runner.directory != "" {
-		command = "cd " +
-			escapeCommandArgumentStrict(runner.directory) + " && " +
-			"{ " + command + "; }"
+	if runner.sudo {
+		command = joinCommand(sudoCommand) + " " + command
 	}
 
 	return runRemoteExecution(cluster, command, setupCallback)
