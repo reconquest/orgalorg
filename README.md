@@ -293,3 +293,33 @@ continue to the next step of execution process.
 <- ORGALORG:132464327653 SYNC [user@node2:1234] phase 1 completed
 ```
 
+# Testing
+
+To run tests it's enough to:
+
+```
+./run_tests
+```
+
+## Requirements
+
+Testcases are run through [tests.sh](https://github.com/reconquest/tests.sh)
+library.
+
+For every testcase new set of temporary containers will be initialized through
+[hastur](https://github.com/seletskiy/hastur), so `systemd` is required for
+running test suite.
+
+orgalorg testcases are close to reality as possible, so orgalorg will really
+connect via SSH to cluster of containers in each testcase.
+
+## Coverage
+
+Run following command to calculate total coverage (available after running
+testsuite):
+
+```bash
+make coverage.total
+```
+
+Current coverage level is something about **85%**.
