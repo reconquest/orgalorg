@@ -69,6 +69,7 @@ func (bar *statusBar) IncFailures() {
 	defer bar.Unlock()
 
 	bar.Failures++
+	bar.Total--
 }
 
 func (bar *statusBar) SetOutputLock(lock sync.Locker) {
@@ -114,7 +115,7 @@ func (bar *statusBar) Draw(writer io.Writer) {
 
 	fmt.Fprintf(buffer, "\r")
 
-	bar.last = trimFormatCodes(buffer.String())
+	bar.last = trimStyleCodes(buffer.String())
 
 	io.Copy(writer, buffer)
 }

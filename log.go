@@ -11,11 +11,7 @@ import (
 	"github.com/seletskiy/hierr"
 )
 
-func setupLogger(format *lorg.Format) {
-	logger.SetFormat(format)
-}
-
-func setLoggerOutputFormat(format outputFormat, logger *lorg.Log) {
+func setLoggerOutputFormat(logger *lorg.Log, format outputFormat) {
 	if format == outputFormatJSON {
 		logger.SetOutput(&jsonOutputWriter{
 			stream: `stderr`,
@@ -40,6 +36,10 @@ func setLoggerVerbosity(level verbosity, logger *lorg.Log) {
 	}
 }
 
+func setLoggerStyle(logger *lorg.Log, style *lorg.Format) {
+	logger.SetFormat(style)
+}
+
 func colorize(
 	attributes ...color.Attribute,
 ) string {
@@ -56,10 +56,6 @@ func colorize(
 }
 
 func tracef(format string, args ...interface{}) {
-	if verbose < verbosityTrace {
-		return
-	}
-
 	args = serializeErrors(args)
 
 	logger.Tracef(format, args...)

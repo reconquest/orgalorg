@@ -16,18 +16,19 @@ var (
 		`{end}` +
 		` {bold}{.Phase}{nobold} ` +
 		`{fg %d}{reverse}{noreverse}{fg %d}{bg %d} ` +
-		`{fg %d}{printf "%%4d" .Success}{fg %d}/{printf "%%4d" .Total} ` +
-		`{if .Failures}{fg %d}(failed: {.Failures}){end}{" "}`
+		`{fg %d}{bold}{printf "%%4d" .Success}{nobold}{fg %d}` +
+		`/{printf "%%4d" .Total} ` +
+		`{if .Failures}{fg %d}(failed: {.Failures}){end} {fg %d}{bg %d}`
 
 	statusBarThemes = map[string]string{
 		themeDark: fmt.Sprintf(
 			statusBarThemeTemplate,
-			99, 7, 64, 237, 15, 237, 28, 15, 9,
+			99, 7, 76, 237, 15, 237, 46, 15, 214, 237, 0,
 		),
 
 		themeLight: fmt.Sprintf(
 			statusBarThemeTemplate,
-			99, 7, 64, 254, 16, 254, 106, 16, 9,
+			99, 7, 64, 254, 16, 254, 106, 16, 9, 254, 0,
 		),
 	}
 

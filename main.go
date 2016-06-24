@@ -199,6 +199,8 @@ Output format and colors options:
                           * level <level> <format> - insert in place specified
                             format if log level matches specified level.
                           [default: ` + themeDark + `]
+    --dark               Set all available formats to predefined dark theme.
+    --light              Set all available formats to predefined light theme.
     --no-colors          Do not use colors.
 
 Timeout options:
@@ -266,16 +268,19 @@ func main() {
 
 	format, isOutputOnTTY, isColorEnabled = parseOutputFormat(args)
 
-	logFormat, err := parseLogFormat(args)
+	setLoggerOutputFormat(logger, format)
+
+	loggerStyle, err := getLoggerStyle(parseTheme("log", args))
 	if err != nil {
-		errorf("%s", err)
+		errorf("%s", hierr.Errorf(
+			err,
+			`can't use given logger style`,
+		))
 
 		exit(1)
 	}
 
-	setupLogger(logFormat)
-
-	setLoggerOutputFormat(format, logger)
+	setLoggerStyle(logger, loggerStyle)
 
 	poolSize, err := parseThreadPoolSize(args)
 	if err != nil {
@@ -287,9 +292,15 @@ func main() {
 
 	pool = newThreadPool(poolSize)
 
-	statusFormat, err := parseStatusBarFormat(args)
+	statusStyle, err := getStatusBarStyle(parseTheme("status", args))
+	if err != nil {
+		errorf("%s", hierr.Errorf(
+			err,
+			`can't use given status bar style`,
+		))
+	}
 
-	status = newStatusBar(statusFormat)
+	status = newStatusBar(statusStyle)
 
 	switch {
 	case args["--upload"].(bool):
