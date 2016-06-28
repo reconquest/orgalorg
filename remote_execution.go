@@ -41,8 +41,6 @@ func (execution *remoteExecution) wait() error {
 	for range execution.nodes {
 		result := <-results
 		if result.err != nil {
-			status.IncFailures()
-
 			exitCodes[result.node.exitCode]++
 
 			executionErrors = hierr.Push(
@@ -58,8 +56,6 @@ func (execution *remoteExecution) wait() error {
 
 			continue
 		}
-
-		status.IncSuccess()
 
 		tracef(
 			`%s has successfully finished execution`,

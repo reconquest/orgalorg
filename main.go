@@ -173,9 +173,6 @@ Output format and colors options:
     --status-format <f>  Format for the status bar.
                           Full Go template syntax is available with delims
                           of '{' and '}'. Variables available:
-                          * .Phase - either:
-                            * '` + statusBarPhaseConnecting + `';
-                            * '` + statusBarPhaseExecuting + `';
                           * .Total - total amount of connected nodes;
                           * .Success - number of nodes that successfully done
                             phase;
@@ -617,8 +614,6 @@ func connectAndLock(
 		noLockFail = args["--no-lock-fail"].(bool)
 	)
 
-	status.SetPhase(statusBarPhaseConnecting)
-
 	addresses, err := parseAddresses(hosts, defaultUser, fromStdin)
 	if err != nil {
 		return nil, hierr.Errorf(
@@ -626,8 +621,6 @@ func connectAndLock(
 			`can't parse all specified addresses`,
 		)
 	}
-
-	status.SetTotal(len(addresses))
 
 	timeouts, err := makeTimeouts(args)
 	if err != nil {

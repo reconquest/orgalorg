@@ -11,28 +11,13 @@ import (
 	"github.com/seletskiy/hierr"
 )
 
-type (
-	statusBarPhase string
-)
-
-const (
-	statusBarPhaseConnecting statusBarPhase = "CONNECTING"
-	statusBarPhaseExecuting                 = "EVALUATING"
-)
-
 type statusBar struct {
-	sync.Mutex
-
-	Phase    statusBarPhase
-	Total    int
-	Failures int
-	Success  int
+	sync.Locker
 
 	format *template.Template
+	last   string
 
-	last string
-
-	lock sync.Locker
+	data interface{}
 }
 
 func newStatusBar(format *template.Template) *statusBar {
@@ -41,49 +26,32 @@ func newStatusBar(format *template.Template) *statusBar {
 	}
 }
 
-func (bar *statusBar) SetPhase(phase statusBarPhase) {
+func (bar *statusBar) Lock() {
+	if bar.Locker != nil {
+		bar.Locker.Lock()
+	}
+}
+
+func (bar *statusBar) Unlock() {
+	if bar.Locker != nil {
+		bar.Locker.Unlock()
+	}
+}
+
+func (bar *statusBar) Set(data interface{}) {
 	bar.Lock()
 	defer bar.Unlock()
 
-	bar.Phase = phase
-
-	bar.Success = 0
+	bar.data = data
 }
 
-func (bar *statusBar) SetTotal(total int) {
-	bar.Lock()
-	defer bar.Unlock()
-
-	bar.Total = total
-}
-
-func (bar *statusBar) IncSuccess() {
-	bar.Lock()
-	defer bar.Unlock()
-
-	bar.Success++
-}
-
-func (bar *statusBar) IncFailures() {
-	bar.Lock()
-	defer bar.Unlock()
-
-	bar.Failures++
-	bar.Total--
-}
-
-func (bar *statusBar) SetOutputLock(lock sync.Locker) {
-	bar.lock = lock
+func (bar *statusBar) SetLock(lock sync.Locker) {
+	bar.Locker = lock
 }
 
 func (bar *statusBar) Clear(writer io.Writer) {
 	bar.Lock()
 	defer bar.Unlock()
-
-	if bar.lock != nil {
-		bar.lock.Lock()
-		defer bar.lock.Unlock()
-	}
 
 	fmt.Fprint(writer, strings.Repeat(" ", len(bar.last))+"\r")
 
@@ -94,18 +62,13 @@ func (bar *statusBar) Draw(writer io.Writer) {
 	bar.Lock()
 	defer bar.Unlock()
 
-	if bar.lock != nil {
-		bar.lock.Lock()
-		defer bar.lock.Unlock()
-	}
-
 	buffer := &bytes.Buffer{}
 
-	if bar.Phase == "" {
+	if bar.data == nil {
 		return
 	}
 
-	err := bar.format.Execute(buffer, bar)
+	err := bar.format.Execute(buffer, bar.data)
 	if err != nil {
 		errorf("%s", hierr.Errorf(
 			err,

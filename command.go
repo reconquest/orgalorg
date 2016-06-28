@@ -48,8 +48,6 @@ func runRemoteExecution(
 		outputLock = nil
 	}
 
-	status.SetOutputLock(logLock)
-
 	errors := make(chan error, 0)
 	for _, node := range lockedNodes.nodes {
 		go func(node *distributedLockNode) {

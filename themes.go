@@ -10,20 +10,19 @@ const (
 )
 
 var (
-	statusBarThemeTemplate = `{" "}{bg %d}{fg %d}` +
-		`{if eq .Phase "` + statusBarPhaseExecuting + `"}` +
-		`{bg %d}` +
-		`{end}` +
-		` {bold}{.Phase}{nobold} ` +
-		`{fg %d}{reverse}{noreverse}{fg %d}{bg %d} ` +
+	statusBarThemeTemplate = `{" "}{bg %d}{fg %d}{" "}` +
+		`{bold}` +
+		`{if .Locking}{bg %d}LOCK{end}` +
+		`{nobold}{" "}` +
+		`{fg %d}{reverse}{noreverse}{fg %d}{bg %d}{" "}` +
 		`{fg %d}{bold}{printf "%%4d" .Success}{nobold}{fg %d}` +
-		`/{printf "%%4d" .Total} ` +
-		`{if .Failures}{fg %d}(failed: {.Failures}){end} {fg %d}{bg %d}`
+		`/{printf "%%4d" .Total}{" "}` +
+		`{if .Failures}{fg %d}(failed: {.Failures}){end}{" "}{fg %d}{bg %d}`
 
 	statusBarThemes = map[string]string{
 		themeDark: fmt.Sprintf(
 			statusBarThemeTemplate,
-			99, 7, 76, 237, 15, 237, 46, 15, 214, 237, 0,
+			99, 7, 22, 237, 15, 237, 46, 15, 214, 237, 0,
 		),
 
 		themeLight: fmt.Sprintf(

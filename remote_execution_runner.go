@@ -22,8 +22,6 @@ func (runner *remoteExecutionRunner) run(
 	cluster *distributedLock,
 	setupCallback func(*remoteExecutionNode),
 ) (*remoteExecution, error) {
-	status.SetPhase(statusBarPhaseExecuting)
-
 	command := joinCommand(runner.command)
 
 	if runner.directory != "" {
