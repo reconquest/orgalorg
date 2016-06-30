@@ -17,16 +17,22 @@ const (
 
 func parseOutputFormat(
 	args map[string]interface{},
-) (outputFormat, bool, bool) {
+) outputFormat {
 
-	format := outputFormatText
+	formatType := outputFormatText
 	if args["--json"].(bool) {
-		format = outputFormatJSON
+		formatType = outputFormatJSON
 	}
 
-	isOutputOnTTY := terminal.IsTerminal(int(os.Stderr.Fd()))
+	return formatType
+}
 
-	isColorEnabled := isOutputOnTTY
+func isOutputOnTTY() bool {
+	return terminal.IsTerminal(int(os.Stderr.Fd()))
+}
+
+func isColorEnabled(args map[string]interface{}, hasTTY bool) bool {
+	isColorEnabled := hasTTY
 
 	if format != outputFormatText {
 		isColorEnabled = false
@@ -36,5 +42,5 @@ func parseOutputFormat(
 		isColorEnabled = false
 	}
 
-	return format, isOutputOnTTY, isColorEnabled
+	return isColorEnabled
 }

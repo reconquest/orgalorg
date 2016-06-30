@@ -2,6 +2,10 @@ package main
 
 import (
 	"fmt"
+
+	"github.com/kovetskiy/lorg"
+	"github.com/reconquest/colorgful"
+	"github.com/reconquest/loreley"
 )
 
 const (
@@ -10,60 +14,91 @@ const (
 )
 
 var (
-	statusBarThemeTemplate = `{" "}{bg %d}{fg %d}{" "}` +
+	statusBarThemeTemplate = `{bg %d}{fg %d}` +
 		`{bold}` +
-		`{if .Locking}{bg %d}LOCK{end}` +
-		`{nobold}{" "}` +
-		`{fg %d}{reverse}{noreverse}{fg %d}{bg %d}{" "}` +
+		`{if eq .Phase "lock"}{bg %d}  LOCK{end}` +
+		`{if eq .Phase "exec"}{bg %d}  EXEC{end}` +
+		`{if eq .Phase "upload"}{bg %d}  UPLOAD{end}` +
+		`{nobold} ` +
+		`{from "" %d} ` +
 		`{fg %d}{bold}{printf "%%4d" .Success}{nobold}{fg %d}` +
-		`/{printf "%%4d" .Total}{" "}` +
-		`{if .Failures}{fg %d}(failed: {.Failures}){end}{" "}{fg %d}{bg %d}`
+		`/{printf "%%4d" .Total} ` +
+		`{if .Fails}{fg %d}✗ {.Fails}{end} ` +
+		`{from "" %d}` +
+		`{if eq .Phase "upload"}{fg %d} ` +
+		`{printf "%%9s/%%s" .Written .Bytes} ` +
+		`{end}`
 
 	statusBarThemes = map[string]string{
 		themeDark: fmt.Sprintf(
 			statusBarThemeTemplate,
-			99, 7, 22, 237, 15, 237, 46, 15, 214, 237, 0,
+			99, 7, 22, 1, 25, 237, 46, 15, 214, 16, 140,
 		),
 
 		themeLight: fmt.Sprintf(
 			statusBarThemeTemplate,
-			99, 7, 64, 254, 16, 254, 106, 16, 9, 254, 0,
+			99, 7, 22, 1, 64, 254, 106, 16, 9, -1, 140,
 		),
 	}
 
-	logThemeTemplate = `{level "error" "{fg %d}"}` +
-		`{level "warning" "{fg %d}{bg %d}"}` +
-		`{level "debug" "{fg %d}"}` +
-		`{level "trace" "{fg %d}"}` +
-		`* {log "time"} ` +
-		`{level "error" "{bg %d}{bold}"}{log "level:[%%s]:right:true"}` +
-		`{level "error" "{bg %d}"}{nobold} %%s`
-
-	logThemes = map[string]string{
-		themeDark: fmt.Sprintf(
-			logThemeTemplate,
-			1, 11, 0, 250, 243, 52, 0,
-		),
-
-		themeLight: fmt.Sprintf(
-			logThemeTemplate,
-			199, 172, 230, 240, 248, 220, 0,
-		),
-	}
+	logFormat = `${time} ${level:[%s]:right:true} %s`
 )
 
-func getStatusBarTheme(theme string) string {
-	if format, ok := statusBarThemes[theme]; ok {
-		return format
-	}
+func getLoggerTheme(
+	theme string,
+	isColorEnabled bool,
+) (lorg.Formatter, error) {
+	colorgful.NoColors = !isColorEnabled
 
-	return theme
+	switch theme {
+	case "dark":
+		return colorgful.ApplyDefaultTheme(
+			logFormat,
+			colorgful.Dark,
+		)
+	case "light":
+		return colorgful.ApplyDefaultTheme(
+			logFormat,
+			colorgful.Light,
+		)
+	default:
+		return colorgful.Format(theme)
+	}
 }
 
-func getLogTheme(theme string) string {
-	if format, ok := logThemes[theme]; ok {
-		return format
+func getStatusBarTheme(
+	theme string,
+	isColorEnabled bool,
+) (*loreley.Style, error) {
+	if format, ok := statusBarThemes[theme]; ok {
+		theme = format
 	}
 
-	return theme
+	style, err := loreley.CompileWithReset(theme, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	style.NoColors = !isColorEnabled
+
+	return style, nil
+}
+
+func parseTheme(target string, args map[string]interface{}) string {
+	var (
+		theme = args["--"+target+"-format"].(string)
+		light = args["--light"].(bool)
+		dark  = args["--dark"].(bool)
+	)
+
+	switch {
+	case light:
+		return themeLight
+
+	case dark:
+		return themeDark
+
+	default:
+		return theme
+	}
 }

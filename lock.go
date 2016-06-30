@@ -33,17 +33,17 @@ func acquireDistributedLock(
 		nodeAddMutex = &sync.Mutex{}
 	)
 
-	report := &struct {
-		Locking bool
-		Nodes   int64
+	status := &struct {
+		Phase   string
+		Total   int64
 		Fails   int64
 		Success int64
 	}{
-		Locking: true,
-		Nodes:   int64(len(addresses)),
+		Phase: `lock`,
+		Total: int64(len(addresses)),
 	}
 
-	status.Set(report)
+	setStatus(status)
 
 	for _, nodeAddress := range addresses {
 		go func(nodeAddress address) {
@@ -52,8 +52,8 @@ func acquireDistributedLock(
 
 				node, err := connectToNode(cluster, runnerFactory, nodeAddress)
 				if err != nil {
-					atomic.AddInt64(&report.Fails, 1)
-					atomic.AddInt64(&report.Nodes, -1)
+					atomic.AddInt64(&status.Fails, 1)
+					atomic.AddInt64(&status.Total, -1)
 
 					if noConnFail {
 						failed = true
@@ -78,7 +78,7 @@ func acquireDistributedLock(
 				if failed {
 					textStatus = "failed"
 				} else {
-					atomic.AddInt64(&report.Success, 1)
+					atomic.AddInt64(&status.Success, 1)
 
 					nodeAddMutex.Lock()
 					defer nodeAddMutex.Unlock()
@@ -88,9 +88,9 @@ func acquireDistributedLock(
 
 				debugf(
 					`%4d/%d (%d failed) connection %s: %s`,
-					report.Success,
-					report.Nodes,
-					report.Fails,
+					status.Success,
+					status.Total,
+					status.Fails,
 					textStatus,
 					nodeAddress,
 				)

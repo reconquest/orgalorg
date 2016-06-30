@@ -17,6 +17,7 @@ import (
 	"github.com/docopt/docopt-go"
 	"github.com/kovetskiy/lorg"
 	"github.com/mattn/go-shellwords"
+	"github.com/reconquest/barely"
 	"github.com/seletskiy/hierr"
 	"github.com/theairkit/runcmd"
 )
@@ -170,7 +171,7 @@ Output format and colors options:
                           * 'stream' = 'stdout' | 'stderr';
                           * 'node' = <node-name> | null (if internal output);
                           * 'body' = <string>
-    --status-format <f>  Format for the status bar.
+    --bar-format <f>     Format for the status bar.
                           Full Go template syntax is available with delims
                           of '{' and '}'. Variables available:
                           * .Total - total amount of connected nodes;
@@ -215,8 +216,7 @@ Timeout options:
 `
 
 const (
-	defaultSSHPort    = 22
-	sshPasswordPrompt = "Password: "
+	defaultSSHPort = 22
 
 	// heartbeatTimeoutCoefficient will be multiplied to send timeout and
 	// resulting value will be used as time interval between heartbeats.
@@ -228,15 +228,16 @@ const (
 )
 
 var (
+	sshPasswordPrompt = "Password: "
+)
+
+var (
 	logger  = lorg.NewLog()
 	verbose = verbosityNormal
 	format  = outputFormatText
 
-	pool   *threadPool
-	status *statusBar
-
-	isOutputOnTTY  = false
-	isColorEnabled = false
+	pool *threadPool
+	bar  *barely.StatusBar
 )
 
 var (
@@ -244,37 +245,26 @@ var (
 )
 
 func main() {
-	usage, err := formatUsage(string(usage))
-	if err != nil {
-		errorf("%s", hierr.Errorf(
-			err,
-			`can't format usage`,
-		))
-
-		exit(1)
-	}
-
-	args, err := docopt.Parse(usage, nil, true, version, true)
-	if err != nil {
-		panic(err)
-	}
+	args := parseArgs()
 
 	verbose = parseVerbosity(args)
 
 	setLoggerVerbosity(verbose, logger)
 
-	format, isOutputOnTTY, isColorEnabled = parseOutputFormat(args)
+	format = parseOutputFormat(args)
 
 	setLoggerOutputFormat(logger, format)
 
-	loggerStyle, err := getLoggerStyle(parseTheme("log", args))
+	hasTTY := isOutputOnTTY()
+
+	colorEnabled := isColorEnabled(args, hasTTY)
+
+	loggerStyle, err := getLoggerTheme(parseTheme("log", args), colorEnabled)
 	if err != nil {
-		errorf("%s", hierr.Errorf(
+		fatalf("%s", hierr.Errorf(
 			err,
 			`can't use given logger style`,
 		))
-
-		exit(1)
 	}
 
 	setLoggerStyle(logger, loggerStyle)
@@ -289,7 +279,7 @@ func main() {
 
 	pool = newThreadPool(poolSize)
 
-	statusStyle, err := getStatusBarStyle(parseTheme("status", args))
+	barStyle, err := getStatusBarTheme(parseTheme("bar", args), colorEnabled)
 	if err != nil {
 		errorf("%s", hierr.Errorf(
 			err,
@@ -297,7 +287,11 @@ func main() {
 		))
 	}
 
-	status = newStatusBar(statusStyle)
+	if hasTTY {
+		bar = barely.NewStatusBar(barStyle.Template)
+	} else {
+		sshPasswordPrompt = ""
+	}
 
 	switch {
 	case args["--upload"].(bool):
@@ -311,10 +305,25 @@ func main() {
 	}
 
 	if err != nil {
-		errorf("%s", err)
-
-		exit(1)
+		fatalf("%s", err)
 	}
+}
+
+func parseArgs() map[string]interface{} {
+	usage, err := formatUsage(string(usage))
+	if err != nil {
+		fatalf("%s", hierr.Errorf(
+			err,
+			`can't format usage`,
+		))
+	}
+
+	args, err := docopt.Parse(usage, nil, true, version, true)
+	if err != nil {
+		panic(err)
+	}
+
+	return args
 }
 
 func formatUsage(template string) (string, error) {
@@ -445,7 +454,7 @@ func handleSynchronize(args map[string]interface{}) error {
 	)
 
 	var (
-		filesList = []string{}
+		filesList = []file{}
 
 		err error
 	)
@@ -533,7 +542,7 @@ func handleSynchronize(args map[string]interface{}) error {
 func upload(
 	args map[string]interface{},
 	cluster *distributedLock,
-	filesList []string,
+	filesList []file,
 ) error {
 	var (
 		rootDir, _ = args["--root"].(string)
@@ -780,9 +789,7 @@ func generateRunID() string {
 }
 
 func readPassword(prompt string) (string, error) {
-	if isOutputOnTTY {
-		fmt.Fprintf(os.Stderr, sshPasswordPrompt)
-	}
+	fmt.Fprintf(os.Stderr, sshPasswordPrompt)
 
 	tty, err := os.Open("/dev/tty")
 	if err != nil {
@@ -801,7 +808,7 @@ func readPassword(prompt string) (string, error) {
 		)
 	}
 
-	if isOutputOnTTY {
+	if sshPasswordPrompt != "" {
 		fmt.Fprintln(os.Stderr)
 	}
 

@@ -1,14 +1,18 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"strings"
 
-	"github.com/fatih/color"
-
 	"github.com/kovetskiy/lorg"
+	"github.com/reconquest/loreley"
 	"github.com/seletskiy/hierr"
+)
+
+var (
+	loggerFormattingBasicLength = 0
 )
 
 func setLoggerOutputFormat(logger *lorg.Log, format outputFormat) {
@@ -36,29 +40,26 @@ func setLoggerVerbosity(level verbosity, logger *lorg.Log) {
 	}
 }
 
-func setLoggerStyle(logger *lorg.Log, style *lorg.Format) {
+func setLoggerStyle(logger *lorg.Log, style lorg.Formatter) {
 	logger.SetFormat(style)
-}
 
-func colorize(
-	attributes ...color.Attribute,
-) string {
-	if !isColorEnabled {
-		return ""
-	}
+	buffer := &bytes.Buffer{}
+	logger.SetOutput(buffer)
 
-	sequence := []string{}
-	for _, attribute := range attributes {
-		sequence = append(sequence, fmt.Sprint(attribute))
-	}
+	logger.Debug(``)
 
-	return fmt.Sprintf("\x1b[%sm", strings.Join(sequence, ";"))
+	loggerFormattingBasicLength = len(strings.TrimSuffix(
+		loreley.TrimStyles(buffer.String()),
+		"\n",
+	))
+
+	logger.SetOutput(os.Stderr)
 }
 
 func tracef(format string, args ...interface{}) {
 	args = serializeErrors(args)
 
-	logger.Tracef(format, args...)
+	logger.Tracef(`%s`, wrapNewLines(format, args...))
 
 	drawStatus()
 }
@@ -66,7 +67,7 @@ func tracef(format string, args ...interface{}) {
 func debugf(format string, args ...interface{}) {
 	args = serializeErrors(args)
 
-	logger.Debugf(format, args...)
+	logger.Debugf(`%s`, wrapNewLines(format, args...))
 
 	drawStatus()
 }
@@ -74,7 +75,7 @@ func debugf(format string, args ...interface{}) {
 func infof(format string, args ...interface{}) {
 	args = serializeErrors(args)
 
-	logger.Infof(format, args...)
+	logger.Infof(`%s`, wrapNewLines(format, args...))
 
 	drawStatus()
 }
@@ -86,7 +87,7 @@ func warningf(format string, args ...interface{}) {
 		return
 	}
 
-	logger.Warningf(format, args...)
+	logger.Warningf(`%s`, wrapNewLines(format, args...))
 
 	drawStatus()
 }
@@ -94,7 +95,28 @@ func warningf(format string, args ...interface{}) {
 func errorf(format string, args ...interface{}) {
 	args = serializeErrors(args)
 
-	logger.Errorf(format, args...)
+	logger.Errorf(`%s`, wrapNewLines(format, args...))
+}
+
+func fatalf(format string, args ...interface{}) {
+	args = serializeErrors(args)
+
+	logger.Fatalf(`%s`, wrapNewLines(format, args...))
+
+	exit(1)
+}
+
+func wrapNewLines(format string, values ...interface{}) string {
+	contents := fmt.Sprintf(format, values...)
+	contents = strings.TrimSuffix(contents, "\n")
+	contents = strings.Replace(
+		contents,
+		"\n",
+		"\n"+strings.Repeat(" ", loggerFormattingBasicLength),
+		-1,
+	)
+
+	return contents
 }
 
 func serializeErrors(args []interface{}) []interface{} {
@@ -107,8 +129,16 @@ func serializeErrors(args []interface{}) []interface{} {
 	return args
 }
 
+func setStatus(status interface{}) {
+	if bar == nil {
+		return
+	}
+
+	bar.SetStatus(status)
+}
+
 func shouldDrawStatus() bool {
-	if !isOutputOnTTY {
+	if bar == nil {
 		return false
 	}
 
@@ -120,10 +150,6 @@ func shouldDrawStatus() bool {
 		return false
 	}
 
-	if status == nil {
-		return false
-	}
-
 	return true
 }
 
@@ -132,7 +158,15 @@ func drawStatus() {
 		return
 	}
 
-	status.Draw(os.Stderr)
+	err := bar.Render(os.Stderr)
+	if err != nil {
+		errorf(
+			"%s", hierr.Errorf(
+				err,
+				`can't draw status bar`,
+			),
+		)
+	}
 }
 
 func clearStatus() {
@@ -140,7 +174,7 @@ func clearStatus() {
 		return
 	}
 
-	status.Clear(os.Stderr)
+	bar.Clear(os.Stderr)
 }
 
 func serializeError(err error) string {
