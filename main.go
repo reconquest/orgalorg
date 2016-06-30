@@ -18,6 +18,7 @@ import (
 	"github.com/kovetskiy/lorg"
 	"github.com/mattn/go-shellwords"
 	"github.com/reconquest/barely"
+	"github.com/reconquest/loreley"
 	"github.com/seletskiy/hierr"
 	"github.com/theairkit/runcmd"
 )
@@ -173,33 +174,24 @@ Output format and colors options:
                           * 'body' = <string>
     --bar-format <f>     Format for the status bar.
                           Full Go template syntax is available with delims
-                          of '{' and '}'. Variables available:
-                          * .Total - total amount of connected nodes;
-                          * .Success - number of nodes that successfully done
-                            phase;
-                          * .Failures - number of failed nodes;
-                          Additional functions are available:
-                          * bg <int> - set background color to specified;
-                            * 0 can be used for default bg;
-                          * fg <int> - set foreground color to specified;
-                            * 0 can be used for default fg;
-                          * bold/nobold - set or reset bold mode;
-                          * reverse/noreverse - set or reset reverse mode;
-                          * reset - completely resets mode;
+                          of '{' and '}'.
+                          See https://github.com/reconquest/barely for more
+                          info.
                           For example, run orgalorg with '-vv' flag.
                           Two embedded themes are available by their names:
                           ` + themeDark + ` and ` + themeLight + `
                           [default: ` + themeDark + `]
     --log-format <f>     Format for the logs.
-                          Same, as above, with additional functions:
-                          * log <placeholder-spec> - inserts lorg placeholder
-                            specification;
-                          * level <level> <format> - insert in place specified
-                            format if log level matches specified level.
+                          See https://github.com/reconquest/colorgful  for more
+                          info.
                           [default: ` + themeDark + `]
     --dark               Set all available formats to predefined dark theme.
     --light              Set all available formats to predefined light theme.
-    --no-colors          Do not use colors.
+    --color <mode>       Specify, whether to use colors:
+                          * never - disable colors;
+                          * auto - use colors only when TTY presents.
+                          * always - always use colorized output.
+                          [default: auto]
 
 Timeout options:
     --conn-timeout <t>   Remote host connection timeout in milliseconds.
@@ -255,11 +247,9 @@ func main() {
 
 	setLoggerOutputFormat(logger, format)
 
-	hasTTY := isOutputOnTTY()
+	loreley.Colorize = parseColorMode(args)
 
-	colorEnabled := isColorEnabled(args, hasTTY)
-
-	loggerStyle, err := getLoggerTheme(parseTheme("log", args), colorEnabled)
+	loggerStyle, err := getLoggerTheme(parseTheme("log", args))
 	if err != nil {
 		fatalf("%s", hierr.Errorf(
 			err,
@@ -279,7 +269,7 @@ func main() {
 
 	pool = newThreadPool(poolSize)
 
-	barStyle, err := getStatusBarTheme(parseTheme("bar", args), colorEnabled)
+	barStyle, err := getStatusBarTheme(parseTheme("bar", args))
 	if err != nil {
 		errorf("%s", hierr.Errorf(
 			err,
@@ -287,9 +277,10 @@ func main() {
 		))
 	}
 
-	if hasTTY {
+	if loreley.HasTTY(int(os.Stderr.Fd())) {
 		bar = barely.NewStatusBar(barStyle.Template)
 	} else {
+		bar = nil
 		sshPasswordPrompt = ""
 	}
 

@@ -1,9 +1,7 @@
 package main
 
 import (
-	"os"
-
-	"golang.org/x/crypto/ssh/terminal"
+	"github.com/reconquest/loreley"
 )
 
 type (
@@ -27,20 +25,17 @@ func parseOutputFormat(
 	return formatType
 }
 
-func isOutputOnTTY() bool {
-	return terminal.IsTerminal(int(os.Stderr.Fd()))
-}
+func parseColorMode(args map[string]interface{}) loreley.ColorizeMode {
+	switch args["--color"].(string) {
+	case "always":
+		return loreley.ColorizeAlways
 
-func isColorEnabled(args map[string]interface{}, hasTTY bool) bool {
-	isColorEnabled := hasTTY
+	case "auto":
+		return loreley.ColorizeOnTTY
 
-	if format != outputFormatText {
-		isColorEnabled = false
+	case "never":
+		return loreley.ColorizeNever
 	}
 
-	if args["--no-colors"].(bool) {
-		isColorEnabled = false
-	}
-
-	return isColorEnabled
+	return loreley.ColorizeNever
 }

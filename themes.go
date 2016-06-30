@@ -44,12 +44,7 @@ var (
 	logFormat = `${time} ${level:[%s]:right:true} %s`
 )
 
-func getLoggerTheme(
-	theme string,
-	isColorEnabled bool,
-) (lorg.Formatter, error) {
-	colorgful.NoColors = !isColorEnabled
-
+func getLoggerTheme(theme string) (lorg.Formatter, error) {
 	switch theme {
 	case "dark":
 		return colorgful.ApplyDefaultTheme(
@@ -66,10 +61,7 @@ func getLoggerTheme(
 	}
 }
 
-func getStatusBarTheme(
-	theme string,
-	isColorEnabled bool,
-) (*loreley.Style, error) {
+func getStatusBarTheme(theme string) (*loreley.Style, error) {
 	if format, ok := statusBarThemes[theme]; ok {
 		theme = format
 	}
@@ -78,8 +70,6 @@ func getStatusBarTheme(
 	if err != nil {
 		return nil, err
 	}
-
-	style.NoColors = !isColorEnabled
 
 	return style, nil
 }
