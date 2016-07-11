@@ -1,27 +1,37 @@
 # orgalorg
 
-Ultimate parallel cluster file synchronization tool.
+Ultimate parallel cluster file synchronization tool and SSH commands
+executioner.
 
+![demo](https://raw.githubusercontent.com/reconquest/orgalorg/status-line/demo.gif)
 
-# What
+# Features
 
-orgalorg provides easy way of synchronizing files acroess cluster.
+* Zero-configuration. No config files.
 
-orgalorg works through ssh & tar, so no unexpected protocol errors will arise.
+* Running SSH commands or shell scripts on any number of hosts in parallel. All
+  output from nodes will be returned back, keeping stdout and stderr streams
+  mapping of original commands.
 
-In default mode of operation (lately referred as sync mode) orgalorg will
-perform following steps in order:
+* Synchronizing files and directories across cluster with prior global cluster
+  locking.
+  After synchronization is done, arbitrary command can be evaluated.
 
-1. Acquire global cluster lock (more detailed info above).
-2. Create, upload and extract specified files in streaming mode to the
-   specified nodes into temporary run directory.
-3. Start synchronization tool on each node, that should relocate files from
-   temporary run directory to the actual destination.
+* Synchronizing files and directories with subsequent run of complex multi-step
+  scenario with steps synchronization across cluster.
 
-So, orgalorg expected to work with third-party synchronization tool, that
-will do actual files relocation and can be quite intricate, **but orgalorg can
-work without that tool and perform simple files sync (more on this later)**.
+* User-friendly progress indication.
 
+* Both strict or loose modes of failover to be sure that everything will either
+  fail on any error or try to complete, no matter of what.
+
+* Interactive password authentication as well as SSH public key authentication.
+
+* Ability to run commands through `sudo`.
+
+* Grouped mode of output, so stdout and stderr from nodes will be grouped by
+  node name. Alternatively, output can be returned as soon as node returns
+  something.
 
 # Example usages
 
@@ -30,19 +40,19 @@ host-specification arguments, like `-o host-a -o host-b`.
 
 ## Obtaining global cluster lock
 
-```
+```bash
 orgalorg -o <host>... -L
 ```
 
 ## Obtaining global cluster lock on custom directory
 
-```
+```bash
 orgalorg -o <host>... -L -r /etc
 ```
 
 ## Evaluating command on hosts in parallel
 
-```
+```bash
 orgalorg -o <host>... -C uptime
 ```
 
@@ -51,33 +61,65 @@ orgalorg -o <host>... -C uptime
 `axfr` is a tool of your choice for retrieving domain information from your
 infrastructure DNS.
 
-```
+```bash
 axfr | grep phpnode | orgalorg -s -C uptime
 ```
 
 ## Evaluate command under root (passwordless sudo required)
 
-```
+```bash
 orgalorg -o <host>... -x -C whoami
 ```
 
 ## Copying SSH public key for remote authentication
 
-```
+```bash
 orgalorg -o <host>... -p -i ~/.ssh/id_rsa.pub -C tee -a ~/.ssh/authorized_keys
 ```
 
 ## Synchronizing configs and then reloading service (like nginx)
 
-```
+```bash
 orgalorg -o <host>... -xn 'systemctl reload nginx' -S /etc/nginx.conf
 ```
 
 ## Evaluating shell script
 
-```
+```bash
 orgalorg -o <host>... -i script.bash -C bash
 ```
+
+## Install package on all nodes and get combined output from each node
+
+```bash
+orgalorg -o <host>... -lx -C pacman -Sy my-package --noconfirm
+```
+
+## Evaluating shell oneliner
+
+```bash
+orgalorg -o <host>... -C sleep '$(($RANDOM % 10))' '&&' echo done
+```
+
+# Description
+
+orgalorg provides easy way of synchronizing files across cluster and running
+arbitrary SSH commands.
+
+orgalorg works through SSH & tar, so no unexpected protocol errors will arise.
+
+In default mode of operation (lately referred as sync mode) orgalorg will
+perform steps in the following order:
+
+1. Acquire global cluster lock (check more detailed info above).
+2. Create, upload and extract specified files in streaming mode to the
+   specified nodes into temporary run directory.
+3. Start synchronization tool on each node, that should relocate files from
+   temporary run directory to the destination.
+
+So, orgalorg expected to work with third-party synchronization tool, that
+will do actual files relocation and can be quite intricate, **but orgalorg can
+work without that tool and perform simple files sync (more on this later)**.
 
 
 ## Global Cluster Lock
@@ -251,3 +293,33 @@ continue to the next step of execution process.
 <- ORGALORG:132464327653 SYNC [user@node2:1234] phase 1 completed
 ```
 
+# Testing
+
+To run tests it's enough to:
+
+```
+./run_tests
+```
+
+## Requirements
+
+Testcases are run through [tests.sh](https://github.com/reconquest/tests.sh)
+library.
+
+For every testcase new set of temporary containers will be initialized through
+[hastur](https://github.com/seletskiy/hastur), so `systemd` is required for
+running test suite.
+
+orgalorg testcases are close to reality as possible, so orgalorg will really
+connect via SSH to cluster of containers in each testcase.
+
+## Coverage
+
+Run following command to calculate total coverage (available after running
+testsuite):
+
+```bash
+make coverage.total
+```
+
+Current coverage level is something about **85%**.

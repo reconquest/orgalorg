@@ -38,10 +38,11 @@ func (node *distributedLockNode) lock(
 	filename string,
 ) error {
 	lockCommandString := fmt.Sprintf(
-		`sh -c $'`+
-			`flock -nx %s -c \'`+
-			`printf "%s\\n" && cat\' || `+
-			`printf "%s\\n"'`,
+		`sh -c "`+
+			`flock -nx %s -c '`+
+			`printf \"%s\\n\" && cat' || `+
+			`printf \"%s\\n\"`+
+			`"`,
 		filename,
 		lockAcquiredString,
 		lockLockedString,

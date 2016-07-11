@@ -198,6 +198,9 @@ func runRemoteExecutionNode(
 		)
 	}
 
+	stdout = &statusBarUpdateWriter{stdout}
+	stderr = &statusBarUpdateWriter{stderr}
+
 	if outputLock != (*sync.Mutex)(nil) {
 		sharedLock := newSharedLock(outputLock, 2)
 

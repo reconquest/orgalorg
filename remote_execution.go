@@ -34,9 +34,20 @@ func (execution *remoteExecution) wait() error {
 	)
 
 	var (
-		failures  = 0
+		status = &struct {
+			Phase   string
+			Total   int
+			Fails   int
+			Success int
+		}{
+			Phase: `exec`,
+			Total: len(execution.nodes),
+		}
+
 		exitCodes = map[int]int{}
 	)
+
+	setStatus(status)
 
 	for range execution.nodes {
 		result := <-results
@@ -52,7 +63,14 @@ func (execution *remoteExecution) wait() error {
 				),
 			)
 
-			failures++
+			status.Fails++
+			status.Total--
+
+			tracef(
+				`%s finished with exit code: '%d'`,
+				result.node.node.String(),
+				result.node.exitCode,
+			)
 
 			continue
 		}
@@ -63,8 +81,8 @@ func (execution *remoteExecution) wait() error {
 		)
 	}
 
-	if failures > 0 {
-		if failures == len(execution.nodes) {
+	if status.Fails > 0 {
+		if status.Fails == len(execution.nodes) {
 			exitCodesValue := reflect.ValueOf(exitCodes)
 
 			topError := fmt.Errorf(
@@ -89,7 +107,7 @@ func (execution *remoteExecution) wait() error {
 		return hierr.Errorf(
 			executionErrors,
 			`commands are exited with non-zero exit code on %d of %d nodes`,
-			failures,
+			status.Fails,
 			len(execution.nodes),
 		)
 	}

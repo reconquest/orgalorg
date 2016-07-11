@@ -17,6 +17,8 @@ import (
 	"github.com/docopt/docopt-go"
 	"github.com/kovetskiy/lorg"
 	"github.com/mattn/go-shellwords"
+	"github.com/reconquest/barely"
+	"github.com/reconquest/loreley"
 	"github.com/seletskiy/hierr"
 	"github.com/theairkit/runcmd"
 )
@@ -107,7 +109,7 @@ Options:
                           [default: $HOME/.ssh/id_rsa]
     -p --password        Enable password authentication.
                           Exclude '-k' option.
-                          TTY is required for reading password.
+                          Interactive TTY is required for reading password.
     -x --sudo            Obtain root via 'sudo -n'.
                           By default, orgalorg will not obtain root and do
                           all actions from specified user. To change that
@@ -157,17 +159,39 @@ Advanced options:
                           shell wrapper will be used. If any args are given
                           using '-g', they will be appended to shell
                           invocation.
-                          [default: bash -c $'{}']
+                          [default: bash -c '{}']
     -d --threads <n>     Set threads count which will be used for connection,
                           locking and execution commands.
                           [default: 16].
+    --no-preserve-uid    Do not preserve UIDs for transferred files.
+    --no-preserve-gid    Do not preserve GIDs for transferred files.
+
+Output format and colors options:
     --json               Output everything in line-by-line JSON format,
                           printing objects with fields:
                           * 'stream' = 'stdout' | 'stderr';
                           * 'node' = <node-name> | null (if internal output);
                           * 'body' = <string>
-    --no-preserve-uid    Do not preserve UIDs for transferred files.
-    --no-preserve-gid    Do not preserve GIDs for transferred files.
+    --bar-format <f>     Format for the status bar.
+                          Full Go template syntax is available with delims
+                          of '{' and '}'.
+                          See https://github.com/reconquest/barely for more
+                          info.
+                          For example, run orgalorg with '-vv' flag.
+                          Two embedded themes are available by their names:
+                          ` + themeDark + ` and ` + themeLight + `
+                          [default: ` + themeDark + `]
+    --log-format <f>     Format for the logs.
+                          See https://github.com/reconquest/colorgful  for more
+                          info.
+                          [default: ` + themeDark + `]
+    --dark               Set all available formats to predefined dark theme.
+    --light              Set all available formats to predefined light theme.
+    --color <mode>       Specify, whether to use colors:
+                          * never - disable colors;
+                          * auto - use colors only when TTY presents.
+                          * always - always use colorized output.
+                          [default: auto]
 
 Timeout options:
     --conn-timeout <t>   Remote host connection timeout in milliseconds.
@@ -184,8 +208,7 @@ Timeout options:
 `
 
 const (
-	defaultSSHPort    = 22
-	sshPasswordPrompt = "Password: "
+	defaultSSHPort = 22
 
 	// heartbeatTimeoutCoefficient will be multiplied to send timeout and
 	// resulting value will be used as time interval between heartbeats.
@@ -197,11 +220,16 @@ const (
 )
 
 var (
+	sshPasswordPrompt = "Password: "
+)
+
+var (
 	logger  = lorg.NewLog()
 	verbose = verbosityNormal
 	format  = outputFormatText
 
 	pool *threadPool
+	bar  *barely.StatusBar
 )
 
 var (
@@ -209,22 +237,7 @@ var (
 )
 
 func main() {
-	logger.SetFormat(lorg.NewFormat("* ${time} ${level:[%s]:right:true} %s"))
-
-	usage, err := formatUsage(usage)
-	if err != nil {
-		logger.Error(hierr.Errorf(
-			err,
-			`can't format usage`,
-		))
-
-		exit(1)
-	}
-
-	args, err := docopt.Parse(usage, nil, true, version, true)
-	if err != nil {
-		panic(err)
-	}
+	args := parseArgs()
 
 	verbose = parseVerbosity(args)
 
@@ -232,7 +245,19 @@ func main() {
 
 	format = parseOutputFormat(args)
 
-	setLoggerOutputFormat(format, logger)
+	setLoggerOutputFormat(logger, format)
+
+	loreley.Colorize = parseColorMode(args)
+
+	loggerStyle, err := getLoggerTheme(parseTheme("log", args))
+	if err != nil {
+		fatalf("%s", hierr.Errorf(
+			err,
+			`can't use given logger style`,
+		))
+	}
+
+	setLoggerStyle(logger, loggerStyle)
 
 	poolSize, err := parseThreadPoolSize(args)
 	if err != nil {
@@ -243,6 +268,21 @@ func main() {
 	}
 
 	pool = newThreadPool(poolSize)
+
+	barStyle, err := getStatusBarTheme(parseTheme("bar", args))
+	if err != nil {
+		errorf("%s", hierr.Errorf(
+			err,
+			`can't use given status bar style`,
+		))
+	}
+
+	if loreley.HasTTY(int(os.Stderr.Fd())) {
+		bar = barely.NewStatusBar(barStyle.Template)
+	} else {
+		bar = nil
+		sshPasswordPrompt = ""
+	}
 
 	switch {
 	case args["--upload"].(bool):
@@ -256,31 +296,25 @@ func main() {
 	}
 
 	if err != nil {
-		errorf("%s", err)
-
-		exit(1)
+		fatalf("%s", err)
 	}
 }
 
-func setLoggerOutputFormat(format outputFormat, logger *lorg.Log) {
-	if format == outputFormatJSON {
-		logger.SetOutput(&jsonOutputWriter{
-			stream: `stderr`,
-			node:   ``,
-			output: os.Stderr,
-		})
+func parseArgs() map[string]interface{} {
+	usage, err := formatUsage(string(usage))
+	if err != nil {
+		fatalf("%s", hierr.Errorf(
+			err,
+			`can't format usage`,
+		))
 	}
-}
 
-func setLoggerVerbosity(level verbosity, logger *lorg.Log) {
-	logger.SetLevel(lorg.LevelWarning)
-
-	switch {
-	case level >= verbosityDebug:
-		logger.SetLevel(lorg.LevelDebug)
-	case level >= verbosityNormal:
-		logger.SetLevel(lorg.LevelInfo)
+	args, err := docopt.Parse(usage, nil, true, version, true)
+	if err != nil {
+		panic(err)
 	}
+
+	return args
 }
 
 func formatUsage(template string) (string, error) {
@@ -411,7 +445,7 @@ func handleSynchronize(args map[string]interface{}) error {
 	)
 
 	var (
-		filesList = []string{}
+		filesList = []file{}
 
 		err error
 	)
@@ -499,7 +533,7 @@ func handleSynchronize(args map[string]interface{}) error {
 func upload(
 	args map[string]interface{},
 	cluster *distributedLock,
-	filesList []string,
+	filesList []file,
 ) error {
 	var (
 		rootDir, _ = args["--root"].(string)
@@ -765,7 +799,9 @@ func readPassword(prompt string) (string, error) {
 		)
 	}
 
-	fmt.Fprintln(os.Stderr)
+	if sshPasswordPrompt != "" {
+		fmt.Fprintln(os.Stderr)
+	}
 
 	return string(password), nil
 }
