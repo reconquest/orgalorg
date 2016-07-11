@@ -1,6 +1,6 @@
 # orgalorg
 
-Ultimate parallel cluster file synchronization tool and SSH commend
+Ultimate parallel cluster file synchronization tool and SSH commands
 executioner.
 
 ![demo](https://raw.githubusercontent.com/reconquest/orgalorg/status-line/demo.gif)
@@ -22,8 +22,8 @@ executioner.
 
 * User-friendly progress indication.
 
-* Either strict or loose modes of failover to be sure, that either everything
-  will fail on any error, or everything will try to complete no mather of what.
+* Both strict or loose modes of failover to be sure that everything will either
+  fail on any error or try to complete, no matter of what.
 
 * Interactive password authentication as well as SSH public key authentication.
 
@@ -109,13 +109,13 @@ arbitrary SSH commands.
 orgalorg works through SSH & tar, so no unexpected protocol errors will arise.
 
 In default mode of operation (lately referred as sync mode) orgalorg will
-perform following steps in order:
+perform steps in the following order:
 
-1. Acquire global cluster lock (more detailed info above).
+1. Acquire global cluster lock (check more detailed info above).
 2. Create, upload and extract specified files in streaming mode to the
    specified nodes into temporary run directory.
 3. Start synchronization tool on each node, that should relocate files from
-   temporary run directory to the actual destination.
+   temporary run directory to the destination.
 
 So, orgalorg expected to work with third-party synchronization tool, that
 will do actual files relocation and can be quite intricate, **but orgalorg can
