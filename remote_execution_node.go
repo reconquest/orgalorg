@@ -17,6 +17,8 @@ type remoteExecutionNode struct {
 	stdin  io.WriteCloser
 	stdout io.WriteCloser
 	stderr io.WriteCloser
+
+	exitCode int
 }
 
 func (node *remoteExecutionNode) wait() error {
@@ -24,12 +26,14 @@ func (node *remoteExecutionNode) wait() error {
 	if err != nil {
 		_ = node.stdout.Close()
 		_ = node.stderr.Close()
-		if sshErr, ok := err.(*ssh.ExitError); ok {
+		if sshErrors, ok := err.(*ssh.ExitError); ok {
+			node.exitCode = sshErrors.Waitmsg.ExitStatus()
+
 			return fmt.Errorf(
 				`%s had failed to evaluate command, `+
 					`remote command exited with non-zero code: %d`,
 				node.node.String(),
-				sshErr.Waitmsg.ExitStatus(),
+				node.exitCode,
 			)
 		}
 

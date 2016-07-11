@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"reflect"
 
 	"github.com/seletskiy/hierr"
 )
@@ -19,27 +20,40 @@ type remoteExecutionResult struct {
 }
 
 func (execution *remoteExecution) wait() error {
-	tracef("waiting %d nodes to finish", len(execution.nodes))
+	tracef(`waiting %d nodes to finish`, len(execution.nodes))
 
 	results := make(chan *remoteExecutionResult, 0)
 	for _, node := range execution.nodes {
 		go func(node *remoteExecutionNode) {
-			pool.run(func() {
-				results <- &remoteExecutionResult{node, node.wait()}
-			})
+			results <- &remoteExecutionResult{node, node.wait()}
 		}(node)
 	}
 
 	executionErrors := fmt.Errorf(
-		`can't run remote commands on %d nodes`,
-		len(execution.nodes),
+		`commands are exited with non-zero code`,
 	)
 
-	erroneous := false
+	var (
+		status = &struct {
+			Phase   string
+			Total   int
+			Fails   int
+			Success int
+		}{
+			Phase: `exec`,
+			Total: len(execution.nodes),
+		}
+
+		exitCodes = map[int]int{}
+	)
+
+	setStatus(status)
 
 	for range execution.nodes {
 		result := <-results
 		if result.err != nil {
+			exitCodes[result.node.exitCode]++
+
 			executionErrors = hierr.Push(
 				executionErrors,
 				hierr.Errorf(
@@ -49,7 +63,14 @@ func (execution *remoteExecution) wait() error {
 				),
 			)
 
-			erroneous = true
+			status.Fails++
+			status.Total--
+
+			tracef(
+				`%s finished with exit code: '%d'`,
+				result.node.node.String(),
+				result.node.exitCode,
+			)
 
 			continue
 		}
@@ -60,8 +81,35 @@ func (execution *remoteExecution) wait() error {
 		)
 	}
 
-	if erroneous {
-		return executionErrors
+	if status.Fails > 0 {
+		if status.Fails == len(execution.nodes) {
+			exitCodesValue := reflect.ValueOf(exitCodes)
+
+			topError := fmt.Errorf(
+				`commands are exited with non-zero exit code on all %d nodes`,
+				len(execution.nodes),
+			)
+
+			for _, key := range exitCodesValue.MapKeys() {
+				topError = hierr.Push(
+					topError,
+					fmt.Sprintf(
+						`code %d (%d nodes)`,
+						key.Int(),
+						exitCodesValue.MapIndex(key).Int(),
+					),
+				)
+			}
+
+			return topError
+		}
+
+		return hierr.Errorf(
+			executionErrors,
+			`commands are exited with non-zero exit code on %d of %d nodes`,
+			status.Fails,
+			len(execution.nodes),
+		)
 	}
 
 	return nil

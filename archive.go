@@ -18,6 +18,7 @@ func startArchiveReceivers(
 	cluster *distributedLock,
 	rootDir string,
 	sudo bool,
+	serial bool,
 ) (*remoteExecution, error) {
 	var (
 		command = []string{}
@@ -39,7 +40,7 @@ func startArchiveReceivers(
 
 	logMutex := &sync.Mutex{}
 
-	runner := &remoteExecutionRunner{command: command}
+	runner := &remoteExecutionRunner{command: command, serial: serial}
 
 	execution, err := runner.run(
 		cluster,
@@ -70,7 +71,7 @@ func startArchiveReceivers(
 
 func archiveFilesToWriter(
 	target io.WriteCloser,
-	files []string,
+	files []file,
 	preserveUID, preserveGID bool,
 ) error {
 	workDir, err := os.Getwd()
@@ -81,17 +82,55 @@ func archiveFilesToWriter(
 		)
 	}
 
+	status := &struct {
+		Phase   string
+		Total   int
+		Fails   int
+		Success int
+		Written bytesStringer
+		Bytes   bytesStringer
+	}{
+		Phase: "upload",
+		Total: len(files),
+	}
+
+	setStatus(status)
+
+	for _, file := range files {
+		status.Bytes.Amount += file.size
+	}
+
 	archive := tar.NewWriter(target)
-	for fileIndex, fileName := range files {
+	stream := io.MultiWriter(archive, callbackWriter(
+		func(data []byte) (int, error) {
+			status.Written.Amount += len(data)
+
+			err = bar.Render(os.Stderr)
+			if err != nil {
+				errorf(
+					`%s`,
+					hierr.Errorf(
+						err,
+						`can't render status bar`,
+					),
+				)
+			}
+
+			return len(data), nil
+		},
+	))
+
+	for fileIndex, file := range files {
 		infof(
 			"%5d/%d sending file: '%s'",
 			fileIndex+1,
 			len(files),
-			fileName,
+			file.path,
 		)
 
 		err = writeFileToArchive(
-			fileName,
+			file.path,
+			stream,
 			archive,
 			workDir,
 			preserveUID,
@@ -101,9 +140,11 @@ func archiveFilesToWriter(
 			return hierr.Errorf(
 				err,
 				`can't write file to archive: '%s'`,
-				fileName,
+				file.path,
 			)
 		}
+
+		status.Success++
 	}
 
 	tracef("closing archive stream, %d files sent", len(files))
@@ -129,6 +170,7 @@ func archiveFilesToWriter(
 
 func writeFileToArchive(
 	fileName string,
+	stream io.Writer,
 	archive *tar.Writer,
 	workDir string,
 	preserveUID, preserveGID bool,
@@ -207,7 +249,7 @@ func writeFileToArchive(
 		)
 	}
 
-	_, err = io.Copy(archive, fileToArchive)
+	_, err = io.Copy(stream, fileToArchive)
 	if err != nil {
 		return hierr.Errorf(
 			err,
@@ -219,8 +261,8 @@ func writeFileToArchive(
 	return nil
 }
 
-func getFilesList(relative bool, sources ...string) ([]string, error) {
-	files := []string{}
+func getFilesList(relative bool, sources ...string) ([]file, error) {
+	files := []file{}
 
 	for _, source := range sources {
 		err := filepath.Walk(
@@ -245,7 +287,10 @@ func getFilesList(relative bool, sources ...string) ([]string, error) {
 					}
 				}
 
-				files = append(files, path)
+				files = append(files, file{
+					path: path,
+					size: int(info.Size()),
+				})
 
 				return nil
 			},

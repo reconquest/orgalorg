@@ -1,8 +1,7 @@
 package main
 
 import (
-	"encoding/json"
-	"io"
+	"github.com/reconquest/loreley"
 )
 
 type (
@@ -14,47 +13,29 @@ const (
 	outputFormatJSON
 )
 
-func parseOutputFormat(args map[string]interface{}) outputFormat {
+func parseOutputFormat(
+	args map[string]interface{},
+) outputFormat {
+
+	formatType := outputFormatText
 	if args["--json"].(bool) {
-		return outputFormatJSON
+		formatType = outputFormatJSON
 	}
 
-	return outputFormatText
+	return formatType
 }
 
-type jsonOutputWriter struct {
-	stream string
-	node   string
+func parseColorMode(args map[string]interface{}) loreley.ColorizeMode {
+	switch args["--color"].(string) {
+	case "always":
+		return loreley.ColorizeAlways
 
-	output io.Writer
-}
+	case "auto":
+		return loreley.ColorizeOnTTY
 
-func (writer *jsonOutputWriter) Write(data []byte) (int, error) {
-	if len(data) == 0 {
-		return 0, nil
+	case "never":
+		return loreley.ColorizeNever
 	}
 
-	message := map[string]interface{}{
-		"stream": writer.stream,
-	}
-
-	if writer.node == "" {
-		message["node"] = nil
-	} else {
-		message["node"] = writer.node
-	}
-
-	message["body"] = string(data)
-
-	jsonMessage, err := json.Marshal(message)
-	if err != nil {
-		return 0, err
-	}
-
-	_, err = writer.output.Write(append(jsonMessage, '\n'))
-	if err != nil {
-		return 0, err
-	}
-
-	return len(data), nil
+	return loreley.ColorizeNever
 }
