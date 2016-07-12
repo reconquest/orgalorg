@@ -33,6 +33,14 @@ executioner.
   node name. Alternatively, output can be returned as soon as node returns
   something.
 
+# Installation
+
+## go get
+
+```bash
+go get github.com/reconquest/orgalorg
+```
+
 # Example usages
 
 `-o <host>...` in later examples will mean any supported combination of
