@@ -41,19 +41,21 @@ func setLoggerVerbosity(level verbosity, logger *lorg.Log) {
 }
 
 func setLoggerStyle(logger *lorg.Log, style lorg.Formatter) {
-	logger.SetFormat(style)
+	testLogger := lorg.NewLog()
+
+	testLogger.SetFormat(style)
 
 	buffer := &bytes.Buffer{}
-	logger.SetOutput(buffer)
+	testLogger.SetOutput(buffer)
 
-	logger.Debug(``)
+	testLogger.Debug(``)
 
 	loggerFormattingBasicLength = len(strings.TrimSuffix(
 		loreley.TrimStyles(buffer.String()),
 		"\n",
 	))
 
-	logger.SetOutput(os.Stderr)
+	logger.SetFormat(style)
 }
 
 func tracef(format string, args ...interface{}) {

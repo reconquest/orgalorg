@@ -105,16 +105,7 @@ func archiveFilesToWriter(
 		func(data []byte) (int, error) {
 			status.Written.Amount += len(data)
 
-			err = bar.Render(os.Stderr)
-			if err != nil {
-				errorf(
-					`%s`,
-					hierr.Errorf(
-						err,
-						`can't render status bar`,
-					),
-				)
-			}
+			drawStatus()
 
 			return len(data), nil
 		},

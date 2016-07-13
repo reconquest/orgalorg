@@ -10,7 +10,7 @@ tests:ensure :orgalorg:with-key -exmn 'true' -S test-file
 
     # We need ssh there, because of /var/run is a tmpfs and not accessible
     # from host.
-    tests:ensure :ssh "$container_ip" cat "/var/run/orgalorg/*/test-file"
+    tests:ensure ssh-test:connect:by-key "$container_ip" cat "/var/run/orgalorg/*/test-file"
     tests:assert-no-diff "test-file" "stdout"
 }
 

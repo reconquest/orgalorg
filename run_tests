@@ -12,8 +12,8 @@ import:source "github.com/reconquest/progress.bash"
 import:source "github.com/reconquest/test-runner.bash"
 import:source "github.com/reconquest/tests.sh"
 import:source "github.com/reconquest/go-test.bash"
+import:source "github.com/reconquest/ssh-test.bash"
 
-import:include tests/ssh.sh
 import:include tests/build.sh
 import:include tests/orgalorg.sh
 import:include tests/deps.sh

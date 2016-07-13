@@ -1,26 +1,35 @@
 go-test:set-prefix "$(tests:print-current-testcase | sed 's/\W/_/g')-"
 
+ssh-test:set-username "orgalorg"
+
+:run-on-container() {
+    # $container_name comes from the outer scope
+
+    containers:run "$container_name" -- /usr/bin/$1 "${@:2}"
+}
+
+ssh-test:set-remote-runner :run-on-container
+
 :bootstrap-container() {
     local container_name="$1"
 
     tests:debug "[$container_name] bootstrapping container"
 
-    tests:ensure :ssh:keygen-remote "$container_name"
+    tests:ensure ssh-test:remote:keygen
 
     tests:ensure containers:run "$container_name" -- \
         /usr/bin/sh -c "
-            useradd -G wheel $(:ssh:get-username)
+            useradd -G wheel $(ssh-test:print-username)
 
             sed -r \"/wheel.*NOPASSWD/s/^#//\" -i /etc/sudoers
 
             mkdir -p \\\\
-                /home/$(:ssh:get-username)/.ssh
+                /home/$(ssh-test:print-username)/.ssh
 
             chown -R \\\\
-                $(:ssh:get-username): /home/$(:ssh:get-username)"
+                $(ssh-test:print-username): /home/$(ssh-test:print-username)"
 
-    tests:ensure :ssh:copy-id "$container_name" \
-        "$(:ssh:get-username)" < "$(:ssh:get-key).pub"
+    tests:ensure ssh-test:remote:copy-id < "$(ssh-test:print-key-path).pub"
 }
 
 :start-ssh-daemon() {
@@ -28,7 +37,7 @@ go-test:set-prefix "$(tests:print-current-testcase | sed 's/\W/_/g')-"
 
     tests:debug "[$container_name] starting sshd..."
 
-    tests:run-background "pid" :ssh:run-daemon "$container_name" "-D"
+    tests:run-background "pid" ssh-test:remote:run-daemon
 
     until containers:is-active "$container_name"; do
         tests:debug "[$container_name] is offline"
@@ -41,7 +50,7 @@ go-test:set-prefix "$(tests:print-current-testcase | sed 's/\W/_/g')-"
     local container_name="$1"
     local container_ip="$2"
 
-    until :ssh "$container_ip" "true"; do
+    until ssh-test:connect:by-key "$container_ip" "true"; do
         tests:debug "[$container_name] sshd is offline"
     done
 
@@ -69,7 +78,7 @@ containers:spawn "/bin/true"
 
 tests:debug "!!! generating local key pair"
 
-tests:ensure :ssh:keygen-local "$(:ssh:get-key)"
+tests:ensure ssh-test:local:keygen
 
 tests:debug "!!! bootstrapping containers"
 

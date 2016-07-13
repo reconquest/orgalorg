@@ -1,10 +1,9 @@
 password="123456"
 
 :set-ssh-password() {
-    local container_name="$1"
     local container_ip="$2"
 
-    tests:ensure :ssh "$container_ip" sudo -n chpasswd \
+    ssh-test:connect:by-key "$container_ip" sudo -n chpasswd \
         <<< "$orgalorg_user:$password"
 }
 

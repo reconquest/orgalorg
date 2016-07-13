@@ -4,7 +4,7 @@ orgalorg_user="orgalorg"
 
 :orgalorg:with-key() {
     :orgalorg \
-        -u $orgalorg_user ${ips[*]/#/-o} -k "$(:ssh:get-key)" "${@}"
+        -u $orgalorg_user ${ips[*]/#/-o} -k "$(ssh-test:print-key-path)" "${@}"
 }
 
 :orgalorg:with-password() {
