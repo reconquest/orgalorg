@@ -16,7 +16,7 @@ func createRemoteRunnerFactoryWithKey(
 ) runnerFactory {
 	return func(address address) (runcmd.Runner, error) {
 		return createRunner(
-			runcmd.NewRemoteKeyAuthRunnerWithTimeouts,
+			runcmd.NewRemoteRawKeyAuthRunnerWithTimeouts,
 			key,
 			address,
 			*timeouts,

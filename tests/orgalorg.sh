@@ -30,6 +30,30 @@ orgalorg_user="orgalorg"
 EXPECT
 }
 
+:orgalorg:with-key-passphrase() {
+    local passphrase="$1"
+    shift
+
+    :expect() {
+        expect -f <(cat) -- "${@}" </dev/tty
+    }
+
+    go-test:run :expect -u $orgalorg_user ${ips[*]/#/-o} \
+            -k "$(ssh-test:print-key-path)" "${@}" <<EXPECT
+        spawn -noecho orgalorg {*}\$argv
+
+        expect {
+            "Key passphrase:" {
+                send "$passphrase\r"
+                interact
+            } eof {
+                send_error "\$expect_out(buffer)"
+                exit 1
+            }
+        }
+EXPECT
+}
+
 :orgalorg() {
     tests:debug "!!! orgalorg ${@}"
 

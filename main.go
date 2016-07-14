@@ -2,8 +2,13 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"crypto/x509"
+	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -220,7 +225,8 @@ const (
 )
 
 var (
-	sshPasswordPrompt = "Password: "
+	sshPasswordPrompt   = "Password: "
+	sshPassphrasePrompt = "Key passphrase: "
 )
 
 var (
@@ -281,7 +287,9 @@ func main() {
 		bar = barely.NewStatusBar(barStyle.Template)
 	} else {
 		bar = nil
+
 		sshPasswordPrompt = ""
+		sshPassphrasePrompt = ""
 	}
 
 	switch {
@@ -684,6 +692,73 @@ func connectAndLock(
 	return cluster, nil
 }
 
+func readSSHKey(path string) ([]byte, error) {
+	data, err := ioutil.ReadFile(path)
+	if err != nil {
+		return nil, hierr.Errorf(
+			err,
+			`can't read SSH key from file`,
+		)
+	}
+
+	decoded, extra := pem.Decode(data)
+
+	if len(extra) != 0 {
+		return nil, hierr.Errorf(
+			errors.New(string(extra)),
+			`extra data found in the SSH key`,
+		)
+	}
+
+	if procType, ok := decoded.Headers[`Proc-Type`]; ok {
+		// according to pem_decrypt.go in stdlib
+		if procType == `4,ENCRYPTED` {
+			passphrase, err := readPassword(sshPassphrasePrompt)
+			if err != nil {
+				return nil, hierr.Errorf(
+					err,
+					`can't read key passphrase`,
+				)
+			}
+
+			data, err = x509.DecryptPEMBlock(decoded, []byte(passphrase))
+			if err != nil {
+				return nil, hierr.Errorf(
+					err,
+					`can't decrypt (using passphrase) SSH key`,
+				)
+			}
+
+			rsa, err := x509.ParsePKCS1PrivateKey(data)
+			if err != nil {
+				return nil, hierr.Errorf(
+					err,
+					`can't parse decrypted key as RSA key`,
+				)
+			}
+
+			pemBytes := bytes.Buffer{}
+			err = pem.Encode(
+				&pemBytes,
+				&pem.Block{
+					Type:  `RSA PRIVATE KEY`,
+					Bytes: x509.MarshalPKCS1PrivateKey(rsa),
+				},
+			)
+			if err != nil {
+				return nil, hierr.Errorf(
+					err,
+					`can't convert decrypted RSA key into PEM format`,
+				)
+			}
+
+			data = pemBytes.Bytes()
+		}
+	}
+
+	return data, nil
+}
+
 func createRunnerFactory(
 	timeouts *runcmd.Timeouts,
 	sshKeyPath string,
@@ -707,8 +782,17 @@ func createRunnerFactory(
 		), nil
 
 	case sshKeyPath != "":
+		key, err := readSSHKey(sshKeyPath)
+		if err != nil {
+			return nil, hierr.Errorf(
+				err,
+				`can't read SSH key: '%s'`,
+				sshKeyPath,
+			)
+		}
+
 		return createRemoteRunnerFactoryWithKey(
-			sshKeyPath,
+			string(key),
 			timeouts,
 		), nil
 
@@ -780,7 +864,7 @@ func generateRunID() string {
 }
 
 func readPassword(prompt string) (string, error) {
-	fmt.Fprintf(os.Stderr, sshPasswordPrompt)
+	fmt.Fprintf(os.Stderr, prompt)
 
 	tty, err := os.Open("/dev/tty")
 	if err != nil {
@@ -799,7 +883,7 @@ func readPassword(prompt string) (string, error) {
 		)
 	}
 
-	if sshPasswordPrompt != "" {
+	if prompt != "" {
 		fmt.Fprintln(os.Stderr)
 	}
 

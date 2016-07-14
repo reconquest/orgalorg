@@ -18,6 +18,7 @@ ssh-test:set-remote-runner :run-on-container
     tests:ensure ssh-test:remote:keygen
 
     tests:ensure containers:run "$container_name" -- \
+        < "$(ssh-test:print-key-path).pub" \
         /usr/bin/sh -c "
             useradd -G wheel $(ssh-test:print-username)
 
@@ -26,10 +27,10 @@ ssh-test:set-remote-runner :run-on-container
             mkdir -p \\\\
                 /home/$(ssh-test:print-username)/.ssh
 
+            cat > /home/$(ssh-test:print-username)/.ssh/authorized_keys
+
             chown -R \\\\
                 $(ssh-test:print-username): /home/$(ssh-test:print-username)"
-
-    tests:ensure ssh-test:remote:copy-id < "$(ssh-test:print-key-path).pub"
 }
 
 :start-ssh-daemon() {
