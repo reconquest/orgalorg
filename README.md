@@ -1,9 +1,8 @@
 # orgalorg
-
+<p align="center">
 Ultimate parallel cluster file synchronization tool and SSH commands
 executioner.
 
-<p align="center">
 <img src="https://raw.githubusercontent.com/reconquest/orgalorg/status-line/demo.gif" />
 </p>
 
