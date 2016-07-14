@@ -6,7 +6,7 @@ executioner.
 </p>
 
 <p align="center">
-<img src="https://raw.githubusercontent.com/reconquest/orgalorg/status-line/demo.gif" />
+<img src="https://raw.githubusercontent.com/reconquest/orgalorg/master/demo.gif" />
 </p>
 
 # Features
