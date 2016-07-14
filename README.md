@@ -3,7 +3,9 @@
 Ultimate parallel cluster file synchronization tool and SSH commands
 executioner.
 
+<p align="center">
 ![demo](https://raw.githubusercontent.com/reconquest/orgalorg/status-line/demo.gif)
+</p>
 
 # Features
 
