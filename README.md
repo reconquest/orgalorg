@@ -1,7 +1,7 @@
 # orgalorg [![goreport](https://goreportcard.com/badge/github.com/reconquest/orgalorg)](https://goreportcard.com/report/github.com/reconquest/orgalorg) [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/reconquest/orgalorg/master/LICENSE)
 
 <p align="center">
-**orgalorg can run command and upload files in parallel by SSH on many hosts**
+<b>orgalorg can run command and upload files in parallel by SSH on many hosts</b>
 </p>
 
 <p align="center">
