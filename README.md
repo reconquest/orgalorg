@@ -1,8 +1,7 @@
 # orgalorg [![goreport](https://goreportcard.com/badge/github.com/reconquest/orgalorg)](https://goreportcard.com/report/github.com/reconquest/orgalorg) [![MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/reconquest/orgalorg/master/LICENSE)
 
 <p align="center">
-Ultimate parallel cluster file synchronization tool and SSH commands
-executioner.
+**orgalorg can run command and upload files in parallel by SSH on many hosts**
 </p>
 
 <p align="center">
@@ -11,7 +10,8 @@ executioner.
 
 # Features
 
-* Zero-configuration. No config files.
+* Zero-configuration. No config files. Everything is done via command line
+  flags.
 
 * Running SSH commands or shell scripts on any number of hosts in parallel. All
   output from nodes will be returned back, keeping stdout and stderr streams
@@ -48,19 +48,8 @@ go get github.com/reconquest/orgalorg
 # Example usages
 
 `-o <host>...` in later examples will mean any supported combination of
-host-specification arguments, like `-o host-a -o host-b`.
-
-## Obtaining global cluster lock
-
-```bash
-orgalorg -o <host>... -L
-```
-
-## Obtaining global cluster lock on custom directory
-
-```bash
-orgalorg -o <host>... -L -r /etc
-```
+host-specification arguments, like  
+`-o node1.example.com -o node2.example.com`.
 
 ## Evaluating command on hosts in parallel
 
@@ -81,6 +70,12 @@ axfr | grep phpnode | orgalorg -s -C uptime
 
 ```bash
 orgalorg -o <host>... -x -C whoami
+```
+
+## Tailing logs from many hosts in realtime
+
+```bash
+orgalorg -o <host>... -C tail -f /var/log/syslog
 ```
 
 ## Copying SSH public key for remote authentication
@@ -111,6 +106,23 @@ orgalorg -o <host>... -lx -C pacman -Sy my-package --noconfirm
 
 ```bash
 orgalorg -o <host>... -C sleep '$(($RANDOM % 10))' '&&' echo done
+```
+
+## Obtaining global cluster lock
+
+```bash
+orgalorg -o <host>... -L
+```
+
+Next orgalorg calls will fail with message, that lock is already acquired,
+until first instance will be stopped.
+
+Useful for setting cluster into maintenance state.
+
+## Obtaining global cluster lock on custom directory
+
+```bash
+orgalorg -o <host>... -L -r /etc
 ```
 
 # Description
