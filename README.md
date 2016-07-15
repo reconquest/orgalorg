@@ -1,4 +1,4 @@
-# orgalorg
+# orgalorg [![goreport](https://goreportcard.com/badge/github.com/reconquest/orgalorg)](https://goreportcard.com/report/github.com/reconquest/orgalorg)
 
 <p align="center">
 Ultimate parallel cluster file synchronization tool and SSH commands
