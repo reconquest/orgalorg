@@ -292,6 +292,10 @@ func main() {
 		sshPassphrasePrompt = ""
 	}
 
+	if loreley.HasTTY(int(os.Stdin.Fd())) {
+		bar = nil
+	}
+
 	switch {
 	case args["--upload"].(bool):
 		fallthrough
