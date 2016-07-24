@@ -62,7 +62,7 @@ go get github.com/reconquest/orgalorg
   orgalorg uses native SSH protocol implementation, so safe and fast to use
   on thousand of nodes.
 
-* dsh/gsh/pdsh: not maintained.
+* dsh / gsh / pdsh: not maintained.
 
 # Example usages
 
