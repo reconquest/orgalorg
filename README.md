@@ -45,6 +45,25 @@
 go get github.com/reconquest/orgalorg
 ```
 
+# Alternatives
+
+* ansible: inteded to apply complex DSL-based scenarious of actions;  
+  orgalorg aimed only on running commands and synchronizing files in parallel.
+  orgalorg can accept target hosts list on stdin and can provide realtime
+  output from commands, which ansible can't do (like running `tail -f`).
+  orgalorg also uses same argument semantic as `ssh`:  
+  `orgalorg ... -C tail -f '/var/log/*.log'` will do exactly the same.
+
+* clusterssh / cssh: will open number of xterm terminals to all nodes.  
+  orgalorg intended to use in batch mode, no GUI is assumed. orgalorg, however,
+  can be used in interactive mode (see example section below).
+
+* pssh: buggy, uses binary ssh, which is not resource efficient.  
+  orgalorg uses native SSH protocol implementation, so safe and fast to use
+  on thousand of nodes.
+
+* dsh/gsh/pdsh: not maintained.
+
 # Example usages
 
 `-o <host>...` in later examples will mean any supported combination of
@@ -106,6 +125,12 @@ orgalorg -o <host>... -lx -C pacman -Sy my-package --noconfirm
 
 ```bash
 orgalorg -o <host>... -C sleep '$(($RANDOM % 10))' '&&' echo done
+```
+
+## Running poor-man interactive parallel shell
+
+```bash
+orgalorg -o <host>... -i /dev/stdin -C bash -s
 ```
 
 ## Obtaining global cluster lock
