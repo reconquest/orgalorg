@@ -47,7 +47,7 @@ go get github.com/reconquest/orgalorg
 
 # Alternatives
 
-* ansible: inteded to apply complex DSL-based scenarious of actions;  
+* ansible: intended to apply complex DSL-based scenarios of actions;  
   orgalorg aimed only on running commands and synchronizing files in parallel.
   orgalorg can accept target hosts list on stdin and can provide realtime
   output from commands, which ansible can't do (like running `tail -f`).
@@ -207,7 +207,7 @@ User can specify `--upload` or `-U` flag to transform orgalorg to the simple
 file upload tool. In that mode orgalorg will upload files to the specified
 directory and then exit.
 
-orgalorg preserves all file attributes while tranfer as well as user and group
+orgalorg preserves all file attributes while transfer as well as user and group
 IDs. That behaviour can be changed by using `--no-preserve-uid` and
 `--no-preseve-gid` command line options.
 
@@ -262,7 +262,7 @@ All communication messages should be prefixed by special prefix, which is
 send by orgalorg in the hello message. All lines on stdout that are not match
 given prefix will be printed as is, untouched.
 
-Communcation begins from the hello message.
+Communication begins from the hello message.
 
 
 ## Protocol
