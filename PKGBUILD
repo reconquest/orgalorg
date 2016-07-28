@@ -1,6 +1,6 @@
 # Maintainer: Stanislav Seletskiy <s.seletskiy@gmail.com>
 pkgname=orgalorg-git
-pkgver=20160620.81_3f220be
+pkgver=20160727.125_ec1c607
 pkgrel=1
 pkgdesc="Parallel file synchronization and SSH tool"
 arch=('i686' 'x86_64')
@@ -13,7 +13,7 @@ makedepends=(
 )
 
 source=(
-	"orgalorg-git::git+ssh://git@git.rn/devops/orgalorg#branch=${BRANCH:-master}"
+    "orgalorg-git::git+https://github.com/reconquest/orgalorg#branch=${BRANCH:-master}"
 )
 
 md5sums=(
@@ -30,7 +30,6 @@ pkgver() {
 	fi
 
 	cd "$srcdir/$pkgname"
-    git checkout sudo-should-wrap-command > /dev/null 2>&1
 	local date=$(git log -1 --format="%cd" --date=short | sed s/-//g)
 	local count=$(git rev-list --count HEAD)
 	local commit=$(git rev-parse --short HEAD)
@@ -56,10 +55,9 @@ build() {
 	cd "$srcdir/.go/src/$pkgname/"
 	ln -sf "$srcdir/.go/src/$pkgname/" "$srcdir/$pkgname"
 
-	git submodule update --init
-
-	go get -v \
-		-gcflags "-trimpath $GOPATH/src"
+    go get -v \
+		-gcflags "-trimpath $GOPATH/src" \
+		-ldflags="-X main.version=$pkgver-$pkgrel"
 }
 
 package() {
