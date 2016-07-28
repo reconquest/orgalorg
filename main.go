@@ -28,7 +28,7 @@ import (
 	"github.com/theairkit/runcmd"
 )
 
-const version = "1.0"
+var version = "[manual build]"
 
 const usage = `orgalorg - files synchronization on many hosts.
 
