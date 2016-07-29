@@ -291,6 +291,8 @@ func main() {
 	if err != nil {
 		fatalf("%s", err)
 	}
+
+	clearStatus()
 }
 
 func parseArgs() map[string]interface{} {

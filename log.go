@@ -103,9 +103,9 @@ func errorf(format string, args ...interface{}) {
 func fatalf(format string, args ...interface{}) {
 	args = serializeErrors(args)
 
-	logger.Fatalf(`%s`, wrapNewLines(format, args...))
-
 	clearStatus()
+
+	logger.Fatalf(`%s`, wrapNewLines(format, args...))
 
 	exit(1)
 }
