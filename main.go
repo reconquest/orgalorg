@@ -185,13 +185,13 @@ Output format and colors options:
                           For example, run orgalorg with '-vv' flag.
                           Two embedded themes are available by their names:
                           ` + themeDark + ` and ` + themeLight + `
-                          [default: ` + themeDark + `]
+                          [default: ` + themeDefault + `]
     --log-format <f>     Format for the logs.
                           See https://github.com/reconquest/colorgful  for more
                           info.
-                          [default: ` + themeDark + `]
-    --dark               Set all available formats to predefined dark theme.
-    --light              Set all available formats to predefined light theme.
+                          [default: ` + themeDefault + `]
+    --colors-dark        Set all available formats to predefined dark theme.
+    --colors-light       Set all available formats to predefined light theme.
     --color <mode>       Specify, whether to use colors:
                           * never - disable colors;
                           * auto - use colors only when TTY presents.
@@ -275,26 +275,7 @@ func main() {
 
 	pool = newThreadPool(poolSize)
 
-	barStyle, err := getStatusBarTheme(parseTheme("bar", args))
-	if err != nil {
-		errorf("%s", hierr.Errorf(
-			err,
-			`can't use given status bar style`,
-		))
-	}
-
-	if loreley.HasTTY(int(os.Stderr.Fd())) {
-		bar = barely.NewStatusBar(barStyle.Template)
-	} else {
-		bar = nil
-
-		sshPasswordPrompt = ""
-		sshPassphrasePrompt = ""
-	}
-
-	if loreley.HasTTY(int(os.Stdin.Fd())) {
-		bar = nil
-	}
+	setupInteractiveMode(args)
 
 	switch {
 	case args["--upload"].(bool):
@@ -861,6 +842,36 @@ func parseAddresses(
 	}
 
 	return getUniqueAddresses(addresses), nil
+}
+
+func setupInteractiveMode(args map[string]interface{}) {
+	var (
+		_, hasStdin = args["--stdin"].(string)
+
+		barLock = &sync.Mutex{}
+	)
+
+	barStyle, err := getStatusBarTheme(parseTheme("bar", args))
+	if err != nil {
+		errorf("%s", hierr.Errorf(
+			err,
+			`can't use given status bar style`,
+		))
+	}
+
+	if loreley.HasTTY(int(os.Stderr.Fd())) {
+		bar = barely.NewStatusBar(barStyle.Template)
+		bar.SetLock(barLock)
+	} else {
+		bar = nil
+
+		sshPasswordPrompt = ""
+		sshPassphrasePrompt = ""
+	}
+
+	if hasStdin && loreley.HasTTY(int(os.Stdin.Fd())) {
+		bar = nil
+	}
 }
 
 func generateRunID() string {

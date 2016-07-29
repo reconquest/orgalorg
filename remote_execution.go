@@ -75,6 +75,8 @@ func (execution *remoteExecution) wait() error {
 			continue
 		}
 
+		status.Success++
+
 		tracef(
 			`%s has successfully finished execution`,
 			result.node.node.String(),

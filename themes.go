@@ -9,8 +9,9 @@ import (
 )
 
 const (
-	themeDark  = `dark`
-	themeLight = `light`
+	themeDefault = `default`
+	themeDark    = `dark`
+	themeLight   = `light`
 )
 
 var (
@@ -32,12 +33,17 @@ var (
 	statusBarThemes = map[string]string{
 		themeDark: fmt.Sprintf(
 			statusBarThemeTemplate,
-			99, 7, 22, 1, 25, 237, 46, 15, 214, 16, 140,
+			99, 7, 22, 1, 25, 237, 46, 15, 214, -1, 140,
 		),
 
 		themeLight: fmt.Sprintf(
 			statusBarThemeTemplate,
 			99, 7, 22, 1, 64, 254, 106, 16, 9, -1, 140,
+		),
+
+		themeDefault: fmt.Sprintf(
+			statusBarThemeTemplate,
+			234, 255, 22, 1, 19, 245, 85, 255, 160, -1, 140,
 		),
 	}
 
@@ -46,6 +52,11 @@ var (
 
 func getLoggerTheme(theme string) (lorg.Formatter, error) {
 	switch theme {
+	case "default":
+		return colorgful.ApplyDefaultTheme(
+			logFormat,
+			colorgful.Default,
+		)
 	case "dark":
 		return colorgful.ApplyDefaultTheme(
 			logFormat,
@@ -77,8 +88,8 @@ func getStatusBarTheme(theme string) (*loreley.Style, error) {
 func parseTheme(target string, args map[string]interface{}) string {
 	var (
 		theme = args["--"+target+"-format"].(string)
-		light = args["--light"].(bool)
-		dark  = args["--dark"].(bool)
+		light = args["--colors-light"].(bool)
+		dark  = args["--colors-dark"].(bool)
 	)
 
 	switch {

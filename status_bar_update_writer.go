@@ -1,8 +1,6 @@
 package main
 
-import (
-	"io"
-)
+import "io"
 
 type statusBarUpdateWriter struct {
 	writer io.WriteCloser

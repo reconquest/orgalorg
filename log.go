@@ -105,6 +105,8 @@ func fatalf(format string, args ...interface{}) {
 
 	logger.Fatalf(`%s`, wrapNewLines(format, args...))
 
+	clearStatus()
+
 	exit(1)
 }
 
@@ -137,6 +139,8 @@ func setStatus(status interface{}) {
 	}
 
 	bar.SetStatus(status)
+
+	drawStatus()
 }
 
 func shouldDrawStatus() bool {
