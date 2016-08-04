@@ -51,7 +51,7 @@ All lines, that are not match protocol will be printed untouched.
 orgalorg first send hello message to the each running node, where '<prefix>'
 is an unique string
 
-    <prefix> HELLO
+  <prefix> HELLO
 
 All consequent communication must be prefixed by that prefix, followed by
 space.
@@ -59,117 +59,117 @@ space.
 Then, orgalorg will pass nodes list to each running node by sending 'NODE'
 commands, where '<node>' is unique node identifier:
 
-    <prefix> NODE <node>
+  <prefix> NODE <node>
 
 After nodes list is exchausted, orgalorg will send 'START' marker, that means
 sync tool may proceed with execution.
 
-    <prefix> START
+  <prefix> START
 
 Then, sync command tool can reply with 'SYNC' messages, that will be
 broadcasted to all connected nodes by orgalorg:
 
-    <prefix> SYNC <description>
+  <prefix> SYNC <description>
 
 Broadcasted sync message will contain source node:
 
-    <prefix> SYNC <node> <description>
+  <prefix> SYNC <node> <description>
 
 Each node can decide, when to wait synchronizations, based on amount of
 received sync messages.
 
 Usage:
-    orgalorg -h | --help
-    orgalorg [options] [-v]... (-o <host>...|-s) -r= -U <files>...
-    orgalorg [options] [-v]... (-o <host>...|-s) [-r=] [-g=]... -S <files>...
-    orgalorg [options] [-v]... (-o <host>...|-s) [-r=] -C [--] <command>...
-    orgalorg [options] [-v]... (-o <host>...|-s) -L
+  orgalorg -h | --help
+  orgalorg [options] [-v]... (-o <host>...|-s) -r= -U <files>...
+  orgalorg [options] [-v]... (-o <host>...|-s) [-r=] [-g=]... -S <files>...
+  orgalorg [options] [-v]... (-o <host>...|-s) [-r=] -C [--] <command>...
+  orgalorg [options] [-v]... (-o <host>...|-s) -L
 
 Operation mode options:
-    -S --sync            Sync.
-                          Synchronizes files on the specified hosts via 3-stage
-                          process:
-                          * global cluster locking (use -L to stop here);
-                          * tar-ing files on local machine, transmitting and
-                          unpacking files to the intermediate directory
-                          (-U to stop here);
-                          * launching sync command tool such as gunter;
-    -L --lock            Will stop right after locking, e.g. will not try to
-                          do sync whatsoever. Will keep lock until interrupted.
-    -U --upload          Upload files to specified directory and exit.
-    -C --command         Run specified command on all hosts and exit.
+  -S --sync               Sync.
+                           Synchronizes files on the specified hosts via 3-stage
+                           process:
+                           * global cluster locking (use -L to stop here);
+                           * tar-ing files on local machine, transmitting and
+                           unpacking files to the intermediate directory
+                           (-U to stop here);
+                           * launching sync command tool such as gunter;
+  -L --lock               Will stop right after locking, e.g. will not try to
+                           do sync whatsoever. Will keep lock until interrupted.
+  -U --upload             Upload files to specified directory and exit.
+  -C --command            Run specified command on all hosts and exit.
 
 Required options:
-    -o --host <host>     Target host in format [<username>@]<domain>[:<port>].
-                          If value is started from '/' or from './', then it's
-                          considered file which should be used to read hosts
-                          from.
-    -s --read-stdin      Read hosts from stdin in addition to other flags.
+  -o --host <host>        Target host in format [<username>@]<domain>[:<port>].
+                           If value is started from '/' or from './', then it's
+                           considered file which should be used to read hosts
+                           from.
+  -s --read-stdin         Read hosts from stdin in addition to other flags.
 
 Options:
-    -h --help            Show this help.
-    -k --key <identity>  Identity file (private key), which will be used for
-                          authentication. This is default way of
-                          authentication.
-                          [default: $HOME/.ssh/id_rsa]
-    -p --password        Enable password authentication.
-                          Exclude '-k' option.
-                          Interactive TTY is required for reading password.
-    -x --sudo            Obtain root via 'sudo -n'.
-                          By default, orgalorg will not obtain root and do
-                          all actions from specified user. To change that
-                          behaviour, this option can be used.
-    -t --no-lock-fail    Try to obtain global lock, but only print warning if
-                          it cannot be done, do not stop execution.
-    -w --no-conn-fail    Skip unreachable servers whatsoever.
-    -r --root <root>     Specify root dir to extract files into.
-                          By default, orgalorg will create temporary directory
-                          inside of '$ROOT'.
-                          Removal of that directory is up to sync tool.
-    -u --user <user>     Username used for connecting to all hosts by default.
-                          [default: $USER]
-    -i --stdin <file>    Pass specified file as input for the command.
-    -l --serial          Run commands in serial mode, so they output will not
-                          interleave each other. Only one node is allowed to
-                          output, all other nodes will wait that node to
-                          finish.
-    -q --quiet           Be quiet, in command mode do not use prefixes.
-    -v --verbose         Print debug information on stderr.
-    -V --version         Print program version.
+  -h --help               Show this help.
+  -k --key <identity>     Identity file (private key), which will be used for
+                           authentication. This is default way of
+                           authentication.
+                           [default: $HOME/.ssh/id_rsa]
+  -p --password           Enable password authentication.
+                           Exclude '-k' option.
+                           Interactive TTY is required for reading password.
+  -x --sudo               Obtain root via 'sudo -n'.
+                           By default, orgalorg will not obtain root and do
+                           all actions from specified user. To change that
+                           behaviour, this option can be used.
+  -t --no-lock-fail       Try to obtain global lock, but only print warning if
+                           it cannot be done, do not stop execution.
+  -w --no-conn-fail       Skip unreachable servers whatsoever.
+  -r --root <root>        Specify root dir to extract files into.
+                           By default, orgalorg will create temporary directory
+                           inside of '$ROOT'.
+                           Removal of that directory is up to sync tool.
+  -u --user <user>        Username used for connecting to all hosts by default.
+                           [default: $USER]
+  -i --stdin <file>       Pass specified file as input for the command.
+  -l --serial             Run commands in serial mode, so they output will not
+                           interleave each other. Only one node is allowed to
+                           output, all other nodes will wait that node to
+                           finish.
+  -q --quiet              Be quiet, in command mode do not use prefixes.
+  -v --verbose            Print debug information on stderr.
+  -V --version            Print program version.
 
 Advanced options:
-    --lock-file <path>   File to put lock onto. If not specified, value of '-r'
-                          will be used. If '-r' is not specified too, then
-                          use "$LOCK" as lock file.
-    -e --relative        Upload files by relative path. By default, all
-                          specified files will be uploaded on the target
-                          hosts by absolute paths, e.g. if you running
-                          orgalorg from '/tmp' dir with argument '-S x',
-                          then file will be uploaded into '/tmp/x' on the
-                          remote hosts. That option switches off that
-                          behavior.
-    -n --sync-cmd <cmd>  Run specified sync command tool on each remote node.
-                          Orgalorg will communicate with sync command tool via
-                          stdin. See 'Protocol commands' below.
-                          [default: /usr/lib/orgalorg/sync "${@}"]
-    -g --arg <arg>       Arguments to pass untouched to the sync command tool.
-                          No modification will be done to the passed arg, so
-                          take care about escaping.
-    -m --simple          Treat sync command as simple tool, which is not
-                          support specified protocol messages. No sync
-                          is possible in that case and all stdout and stderr
-                          will be passed untouched back to the orgalorg.
-    --shell <shell>      Use following shell wrapper. '{}' will be replaced
-                          with properly escaped command. If empty, then no
-                          shell wrapper will be used. If any args are given
-                          using '-g', they will be appended to shell
-                          invocation.
-                          [default: bash -c '{}']
-    -d --threads <n>     Set threads count which will be used for connection,
-                          locking and execution commands.
-                          [default: 16].
-    --no-preserve-uid    Do not preserve UIDs for transferred files.
-    --no-preserve-gid    Do not preserve GIDs for transferred files.
+  --lock-file <path>      File to put lock onto. If not specified, value of '-r'
+                           will be used. If '-r' is not specified too, then
+                           use "$LOCK" as lock file.
+  -e --relative           Upload files by relative path. By default, all
+                           specified files will be uploaded on the target
+                           hosts by absolute paths, e.g. if you running
+                           orgalorg from '/tmp' dir with argument '-S x',
+                           then file will be uploaded into '/tmp/x' on the
+                           remote hosts. That option switches off that
+                           behavior.
+  -n --sync-cmd <cmd>     Run specified sync command tool on each remote node.
+                           Orgalorg will communicate with sync command tool via
+                           stdin. See 'Protocol commands' below.
+                           [default: /usr/lib/orgalorg/sync "${@}"]
+  -g --arg <arg>          Arguments to pass untouched to the sync command tool.
+                           No modification will be done to the passed arg, so
+                           take care about escaping.
+  -m --simple             Treat sync command as simple tool, which is not
+                           support specified protocol messages. No sync
+                           is possible in that case and all stdout and stderr
+                           will be passed untouched back to the orgalorg.
+  --shell <shell>         Use following shell wrapper. '{}' will be replaced
+                           with properly escaped command. If empty, then no
+                           shell wrapper will be used. If any args are given
+                           using '-g', they will be appended to shell
+                           invocation.
+                           [default: bash -c '{}']
+  -d --threads <n>        Set threads count which will be used for connection,
+                           locking and execution commands.
+                           [default: 16].
+  --no-preserve-uid       Do not preserve UIDs for transferred files.
+  --no-preserve-gid       Do not preserve GIDs for transferred files.
 
 Output format and colors options:
     --json               Output everything in line-by-line JSON format,
@@ -199,17 +199,17 @@ Output format and colors options:
                           [default: auto]
 
 Timeout options:
-    --conn-timeout <t>   Remote host connection timeout in milliseconds.
-                          [default: 10000]
-    --send-timeout <t>   Remote host connection data sending timeout in
-                          milliseconds. [default: 60000]
-                          NOTE: send timeout will be also used for the
-                          heartbeat messages, that orgalorg and connected nodes
-                          exchanges through synchronization process.
-    --recv-timeout <t>   Remote host connection data receiving timeout in
-                          milliseconds. [default: 60000]
-    --keep-alive <t>     How long to keep connection keeped alive after session
-                          ends. [default: 10000]
+  -c --conn-timeout <ms>  Remote host connection timeout in milliseconds.
+                           [default: 10000]
+  -o --send-timeout <ms>  Remote host connection data sending timeout in
+                           milliseconds. [default: 60000]
+                           NOTE: send timeout will be also used for the
+                           heartbeat messages, that orgalorg and connected nodes
+                           exchanges through synchronization process.
+  -z --recv-timeout <ms>  Remote host connection data receiving timeout in
+                           milliseconds. [default: 60000]
+  -a --keep-alive <ms>    How long to keep connection keeped alive after session
+                           ends. [default: 10000]
 `
 
 const (
