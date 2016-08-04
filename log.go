@@ -61,25 +61,37 @@ func setLoggerStyle(logger *lorg.Log, style lorg.Formatter) {
 func tracef(format string, args ...interface{}) {
 	args = serializeErrors(args)
 
-	logger.Tracef(`%s`, wrapNewLines(format, args...))
+	logger.Tracef(`%s`, wrapLines(format, args...))
 
 	drawStatus()
+}
+
+func traceln(args ...interface{}) {
+	tracef("%s", fmt.Sprint(serializeErrors(args)...))
 }
 
 func debugf(format string, args ...interface{}) {
 	args = serializeErrors(args)
 
-	logger.Debugf(`%s`, wrapNewLines(format, args...))
+	logger.Debugf(`%s`, wrapLines(format, args...))
 
 	drawStatus()
+}
+
+func debugln(args ...interface{}) {
+	debugf("%s", fmt.Sprint(serializeErrors(args)...))
 }
 
 func infof(format string, args ...interface{}) {
 	args = serializeErrors(args)
 
-	logger.Infof(`%s`, wrapNewLines(format, args...))
+	logger.Infof(`%s`, wrapLines(format, args...))
 
 	drawStatus()
+}
+
+func infoln(args ...interface{}) {
+	infof("%s", fmt.Sprint(serializeErrors(args)...))
 }
 
 func warningf(format string, args ...interface{}) {
@@ -89,15 +101,23 @@ func warningf(format string, args ...interface{}) {
 		return
 	}
 
-	logger.Warningf(`%s`, wrapNewLines(format, args...))
+	logger.Warningf(`%s`, wrapLines(format, args...))
 
 	drawStatus()
+}
+
+func warningln(args ...interface{}) {
+	warningf("%s", fmt.Sprint(serializeErrors(args)...))
 }
 
 func errorf(format string, args ...interface{}) {
 	args = serializeErrors(args)
 
-	logger.Errorf(`%s`, wrapNewLines(format, args...))
+	logger.Errorf(`%s`, wrapLines(format, args...))
+}
+
+func errorln(args ...interface{}) {
+	errorf("%s", fmt.Sprint(serializeErrors(args)...))
 }
 
 func fatalf(format string, args ...interface{}) {
@@ -105,12 +125,16 @@ func fatalf(format string, args ...interface{}) {
 
 	clearStatus()
 
-	logger.Fatalf(`%s`, wrapNewLines(format, args...))
+	logger.Fatalf(`%s`, wrapLines(format, args...))
 
 	exit(1)
 }
 
-func wrapNewLines(format string, values ...interface{}) string {
+func fatalln(args ...interface{}) {
+	fatalf("%s", fmt.Sprint(serializeErrors(args)...))
+}
+
+func wrapLines(format string, values ...interface{}) string {
 	contents := fmt.Sprintf(format, values...)
 	contents = strings.TrimSuffix(contents, "\n")
 	contents = strings.Replace(
@@ -134,17 +158,17 @@ func serializeErrors(args []interface{}) []interface{} {
 }
 
 func setStatus(status interface{}) {
-	if bar == nil {
+	if statusbar == nil {
 		return
 	}
 
-	bar.SetStatus(status)
+	statusbar.SetStatus(status)
 
 	drawStatus()
 }
 
 func shouldDrawStatus() bool {
-	if bar == nil {
+	if statusbar == nil {
 		return false
 	}
 
@@ -164,7 +188,7 @@ func drawStatus() {
 		return
 	}
 
-	err := bar.Render(os.Stderr)
+	err := statusbar.Render(os.Stderr)
 	if err != nil {
 		errorf(
 			"%s", hierr.Errorf(
@@ -180,7 +204,7 @@ func clearStatus() {
 		return
 	}
 
-	bar.Clear(os.Stderr)
+	statusbar.Clear(os.Stderr)
 }
 
 func serializeError(err error) string {

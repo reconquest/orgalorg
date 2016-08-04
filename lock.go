@@ -57,7 +57,7 @@ func acquireDistributedLock(
 
 					if noConnFail {
 						failed = true
-						warningf("%s", err)
+						warningln(err)
 					} else {
 						errors <- err
 						return
@@ -66,7 +66,7 @@ func acquireDistributedLock(
 					err = node.lock(lockFile)
 					if err != nil {
 						if noLockFail {
-							warningf("%s", err)
+							warningln(err)
 						} else {
 							errors <- err
 							return

@@ -50,7 +50,7 @@ func (node *distributedLockNode) lock(
 
 	logMutex := &sync.Mutex{}
 
-	tracef("%s", hierr.Errorf(
+	traceln(hierr.Errorf(
 		lockCommandString,
 		`%s running lock command`,
 		node,

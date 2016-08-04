@@ -201,7 +201,7 @@ Output format and colors options:
 Timeout options:
   -c --conn-timeout <ms>  Remote host connection timeout in milliseconds.
                            [default: 10000]
-  -o --send-timeout <ms>  Remote host connection data sending timeout in
+  -j --send-timeout <ms>  Remote host connection data sending timeout in
                            milliseconds. [default: 60000]
                            NOTE: send timeout will be also used for the
                            heartbeat messages, that orgalorg and connected nodes
@@ -234,8 +234,8 @@ var (
 	verbose = verbosityNormal
 	format  = outputFormatText
 
-	pool *threadPool
-	bar  *barely.StatusBar
+	pool      *threadPool
+	statusbar *barely.StatusBar
 )
 
 var (
@@ -257,7 +257,7 @@ func main() {
 
 	loggerStyle, err := getLoggerTheme(parseTheme("log", args))
 	if err != nil {
-		fatalf("%s", hierr.Errorf(
+		fatalln(hierr.Errorf(
 			err,
 			`can't use given logger style`,
 		))
@@ -267,7 +267,7 @@ func main() {
 
 	poolSize, err := parseThreadPoolSize(args)
 	if err != nil {
-		errorf("%s", hierr.Errorf(
+		errorln(hierr.Errorf(
 			err,
 			`--threads given invalid value`,
 		))
@@ -289,7 +289,7 @@ func main() {
 	}
 
 	if err != nil {
-		fatalf("%s", err)
+		fatalln(err)
 	}
 
 	clearStatus()
@@ -298,7 +298,7 @@ func main() {
 func parseArgs() map[string]interface{} {
 	usage, err := formatUsage(string(usage))
 	if err != nil {
-		fatalf("%s", hierr.Errorf(
+		fatalln(hierr.Errorf(
 			err,
 			`can't format usage`,
 		))
@@ -855,24 +855,24 @@ func setupInteractiveMode(args map[string]interface{}) {
 
 	barStyle, err := getStatusBarTheme(parseTheme("bar", args))
 	if err != nil {
-		errorf("%s", hierr.Errorf(
+		errorln(hierr.Errorf(
 			err,
 			`can't use given status bar style`,
 		))
 	}
 
 	if loreley.HasTTY(int(os.Stderr.Fd())) {
-		bar = barely.NewStatusBar(barStyle.Template)
-		bar.SetLock(barLock)
+		statusbar = barely.NewStatusBar(barStyle.Template)
+		statusbar.SetLock(barLock)
 	} else {
-		bar = nil
+		statusbar = nil
 
 		sshPasswordPrompt = ""
 		sshPassphrasePrompt = ""
 	}
 
 	if hasStdin && loreley.HasTTY(int(os.Stdin.Fd())) {
-		bar = nil
+		statusbar = nil
 	}
 }
 
