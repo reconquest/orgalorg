@@ -9,8 +9,8 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/reconquest/go-lineflushwriter"
-	"github.com/reconquest/go-prefixwriter"
+	"github.com/reconquest/lineflushwriter-go"
+	"github.com/reconquest/prefixwriter-go"
 	"github.com/seletskiy/hierr"
 )
 

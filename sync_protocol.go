@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/reconquest/go-prefixwriter"
+	"github.com/reconquest/prefixwriter-go"
 )
 
 var (
