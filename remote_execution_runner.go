@@ -78,11 +78,15 @@ func escapeCommandArgument(argument string) string {
 }
 
 func escapeCommandArgumentStrict(argument string) string {
-	argument = strings.Replace(argument, `\`, `\\`, -1)
-	argument = strings.Replace(argument, "`", "\\`", -1)
-	argument = strings.Replace(argument, `"`, `\"`, -1)
-	argument = strings.Replace(argument, `'`, `'\''`, -1)
-	argument = strings.Replace(argument, `$`, `\$`, -1)
+	escaper := strings.NewReplacer(
+		`\`, `\\`,
+		"`", "\\`",
+		`"`, `\"`,
+		`'`, `'\''`,
+		`$`, `\$`,
+	)
+
+	escaper.Replace(argument)
 
 	return `"` + argument + `"`
 }
