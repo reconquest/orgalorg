@@ -56,10 +56,7 @@ func (node *distributedLockNode) lock(
 		node,
 	))
 
-	lockCommand, err := node.runner.Command(lockCommandString)
-	if err != nil {
-		return err
-	}
+	lockCommand := node.runner.Command(lockCommandString)
 
 	stdout, err := lockCommand.StdoutPipe()
 	if err != nil {

@@ -125,13 +125,7 @@ func runRemoteExecutionNode(
 	logLock sync.Locker,
 	outputLock sync.Locker,
 ) (*remoteExecutionNode, error) {
-	remoteCommand, err := node.runner.Command(command)
-	if err != nil {
-		return nil, hierr.Errorf(
-			err,
-			`can't establish remote session`,
-		)
-	}
+	remoteCommand := node.runner.Command(command)
 
 	stdoutBackend := io.Writer(os.Stdout)
 	stderrBackend := io.Writer(os.Stderr)
