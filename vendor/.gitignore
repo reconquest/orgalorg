@@ -1,7 +1,11 @@
 /github.com/reconquest/containers.bash
-/github.com/reconquest/hastur.bash
-/github.com/reconquest/progress.bash
-/github.com/reconquest/tests.sh
+/github.com/reconquest/coproc.bash
 /github.com/reconquest/go-test.bash
-/github.com/reconquest/test-runner.bash
+/github.com/reconquest/hastur.bash
+/github.com/reconquest/opts.bash
+/github.com/reconquest/progress.bash
 /github.com/reconquest/ssh-test.bash
+/github.com/reconquest/sudo.bash
+/github.com/reconquest/test-runner.bash
+/github.com/reconquest/tests.sh
+/github.com/reconquest/types.bash
