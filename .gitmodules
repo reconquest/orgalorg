@@ -1,3 +1,39 @@
 [submodule "vendor/github.com/reconquest/import.bash"]
     path = vendor/github.com/reconquest/import.bash
     url = https://github.com/reconquest/import.bash
+[submodule "vendor/github.com/docopt/docopt-go"]
+	path = vendor/github.com/docopt/docopt-go
+	url = https://github.com/docopt/docopt-go
+[submodule "vendor/github.com/kovetskiy/lorg"]
+	path = vendor/github.com/kovetskiy/lorg
+	url = https://github.com/kovetskiy/lorg
+[submodule "vendor/github.com/mattn/go-shellwords"]
+	path = vendor/github.com/mattn/go-shellwords
+	url = https://github.com/mattn/go-shellwords
+[submodule "vendor/github.com/reconquest/barely"]
+	path = vendor/github.com/reconquest/barely
+	url = https://github.com/reconquest/barely
+[submodule "vendor/github.com/reconquest/colorgful"]
+	path = vendor/github.com/reconquest/colorgful
+	url = https://github.com/reconquest/colorgful
+[submodule "vendor/github.com/reconquest/hierr-go"]
+	path = vendor/github.com/reconquest/hierr-go
+	url = https://github.com/reconquest/hierr-go
+[submodule "vendor/github.com/reconquest/lineflushwriter-go"]
+	path = vendor/github.com/reconquest/lineflushwriter-go
+	url = https://github.com/reconquest/lineflushwriter-go
+[submodule "vendor/github.com/reconquest/loreley"]
+	path = vendor/github.com/reconquest/loreley
+	url = https://github.com/reconquest/loreley
+[submodule "vendor/github.com/reconquest/prefixwriter-go"]
+	path = vendor/github.com/reconquest/prefixwriter-go
+	url = https://github.com/reconquest/prefixwriter-go
+[submodule "vendor/github.com/reconquest/ser-go"]
+	path = vendor/github.com/reconquest/ser-go
+	url = https://github.com/reconquest/ser-go
+[submodule "vendor/github.com/theairkit/runcmd"]
+	path = vendor/github.com/theairkit/runcmd
+	url = https://github.com/theairkit/runcmd
+[submodule "vendor/github.com/zazab/zhash"]
+	path = vendor/github.com/zazab/zhash
+	url = https://github.com/zazab/zhash
