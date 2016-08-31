@@ -24,7 +24,7 @@ import (
 	"github.com/mattn/go-shellwords"
 	"github.com/reconquest/barely"
 	"github.com/reconquest/loreley"
-	"github.com/seletskiy/hierr"
+	"github.com/reconquest/hierr-go"
 	"github.com/theairkit/runcmd"
 )
 
@@ -164,7 +164,7 @@ Advanced options:
                            shell wrapper will be used. If any args are given
                            using '-g', they will be appended to shell
                            invocation.
-                           [default: bash -c '{}']
+                           [default: ` + defaultRemoteExecutionShell + `]
   -d --threads <n>        Set threads count which will be used for connection,
                            locking and execution commands.
                            [default: 16].
@@ -222,6 +222,8 @@ const (
 	runsDirectory = "/var/run/orgalorg/"
 
 	defaultLockFile = "/"
+
+	defaultRemoteExecutionShell = "bash -c '{}'"
 )
 
 var (

@@ -7,7 +7,7 @@ import (
 
 	"github.com/reconquest/lineflushwriter-go"
 	"github.com/reconquest/prefixwriter-go"
-	"github.com/seletskiy/hierr"
+	"github.com/reconquest/hierr-go"
 )
 
 type remoteNodesMap map[*distributedLockNode]*remoteExecutionNode
@@ -30,7 +30,7 @@ func (nodes *remoteNodes) Set(
 
 func runRemoteExecution(
 	lockedNodes *distributedLock,
-	command string,
+	command []string,
 	setupCallback func(*remoteExecutionNode),
 	serial bool,
 ) (*remoteExecution, error) {
@@ -121,11 +121,11 @@ func runRemoteExecution(
 
 func runRemoteExecutionNode(
 	node *distributedLockNode,
-	command string,
+	command []string,
 	logLock sync.Locker,
 	outputLock sync.Locker,
 ) (*remoteExecutionNode, error) {
-	remoteCommand := node.runner.Command(command)
+	remoteCommand := node.runner.Command(command[0], command[1:]...)
 
 	stdoutBackend := io.Writer(os.Stdout)
 	stderrBackend := io.Writer(os.Stderr)

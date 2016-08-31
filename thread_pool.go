@@ -3,7 +3,7 @@ package main
 import (
 	"strconv"
 
-	"github.com/seletskiy/hierr"
+	"github.com/reconquest/hierr-go"
 )
 
 type threadPool struct {
