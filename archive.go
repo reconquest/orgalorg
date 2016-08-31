@@ -11,7 +11,7 @@ import (
 
 	"github.com/reconquest/lineflushwriter-go"
 	"github.com/reconquest/prefixwriter-go"
-	"github.com/seletskiy/hierr"
+	"github.com/reconquest/hierr-go"
 )
 
 func startArchiveReceivers(
@@ -20,19 +20,9 @@ func startArchiveReceivers(
 	sudo bool,
 	serial bool,
 ) (*remoteExecution, error) {
-	var (
-		command = []string{}
-		prefix  = []string{}
-	)
-
-	if sudo {
-		prefix = sudoCommand
+	command := []string{
+		"mkdir", "-p", rootDir, "&&", "tar", "--directory", rootDir, "-x",
 	}
-
-	command = append(command, prefix...)
-	command = append(command, `mkdir`, `-p`, rootDir, `&&`)
-	command = append(command, prefix...)
-	command = append(command, `tar`, `--directory`, rootDir, `-x`)
 
 	if verbose >= verbosityDebug {
 		command = append(command, `--verbose`)
@@ -40,7 +30,12 @@ func startArchiveReceivers(
 
 	logMutex := &sync.Mutex{}
 
-	runner := &remoteExecutionRunner{command: command, serial: serial}
+	runner := &remoteExecutionRunner{
+		command: command,
+		serial:  serial,
+		shell:   defaultRemoteExecutionShell,
+		sudo:    sudo,
+	}
 
 	execution, err := runner.run(
 		cluster,

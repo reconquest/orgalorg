@@ -5,7 +5,7 @@ import (
 	"io"
 	"reflect"
 
-	"github.com/seletskiy/hierr"
+	"github.com/reconquest/hierr-go"
 )
 
 type remoteExecution struct {

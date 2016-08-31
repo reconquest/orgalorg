@@ -1,6 +1,6 @@
 package main
 
-import "github.com/seletskiy/hierr"
+import "github.com/reconquest/hierr-go"
 
 func runSyncProtocol(
 	cluster *distributedLock,

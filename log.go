@@ -8,7 +8,7 @@ import (
 
 	"github.com/kovetskiy/lorg"
 	"github.com/reconquest/loreley"
-	"github.com/seletskiy/hierr"
+	"github.com/reconquest/hierr-go"
 )
 
 var (

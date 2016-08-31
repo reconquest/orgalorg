@@ -3,6 +3,9 @@ package main
 import (
 	"fmt"
 	"strings"
+
+	"github.com/mattn/go-shellwords"
+	"github.com/reconquest/hierr-go"
 )
 
 var (
@@ -22,21 +25,32 @@ func (runner *remoteExecutionRunner) run(
 	cluster *distributedLock,
 	setupCallback func(*remoteExecutionNode),
 ) (*remoteExecution, error) {
-	command := joinCommand(runner.command)
+	commandline := joinCommand(runner.command)
 
 	if runner.directory != "" {
-		command = fmt.Sprintf("cd %s && { %s; }",
+		commandline = fmt.Sprintf("cd %s && { %s; }",
 			escapeCommandArgumentStrict(runner.directory),
-			command,
+			commandline,
 		)
 	}
 
-	if runner.shell != "" {
-		command = wrapCommandIntoShell(command, runner.shell, runner.args)
+	if len(runner.shell) != 0 {
+		commandline = wrapCommandIntoShell(
+			commandline,
+			runner.shell,
+			runner.args,
+		)
 	}
 
 	if runner.sudo {
-		command = joinCommand(sudoCommand) + " " + command
+		commandline = joinCommand(sudoCommand) + " " + commandline
+	}
+
+	command, err := shellwords.Parse(commandline)
+	if err != nil {
+		return nil, hierr.Errorf(
+			err, "unparsable command line: %s", commandline,
+		)
 	}
 
 	return runRemoteExecution(cluster, command, setupCallback, runner.serial)

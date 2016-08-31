@@ -9,7 +9,7 @@ import (
 
 	"github.com/reconquest/lineflushwriter-go"
 	"github.com/reconquest/prefixwriter-go"
-	"github.com/seletskiy/hierr"
+	"github.com/reconquest/hierr-go"
 	"github.com/theairkit/runcmd"
 )
 
@@ -37,26 +37,25 @@ type distributedLockConnection struct {
 func (node *distributedLockNode) lock(
 	filename string,
 ) error {
-	lockCommandString := fmt.Sprintf(
-		`sh -c "`+
-			`flock -nx %s -c '`+
-			`printf \"%s\\n\" && cat' || `+
-			`printf \"%s\\n\"`+
-			`"`,
-		filename,
-		lockAcquiredString,
-		lockLockedString,
-	)
+	lockCommandLine := []string{
+		"sh", "-c", fmt.Sprintf(
+			`flock -nx %s -c 'printf "%s\n" && cat' || printf "%s\n"`,
+			filename, lockAcquiredString, lockLockedString,
+		),
+	}
 
 	logMutex := &sync.Mutex{}
 
 	traceln(hierr.Errorf(
-		lockCommandString,
+		lockCommandLine,
 		`%s running lock command`,
 		node,
 	))
 
-	lockCommand := node.runner.Command(lockCommandString)
+	lockCommand := node.runner.Command(
+		lockCommandLine[0],
+		lockCommandLine[1:]...,
+	)
 
 	stdout, err := lockCommand.StdoutPipe()
 	if err != nil {
@@ -90,7 +89,7 @@ func (node *distributedLockNode) lock(
 		return hierr.Errorf(
 			err,
 			`%s can't start lock command: '%s`,
-			node, lockCommandString,
+			node, lockCommandLine,
 		)
 	}
 
