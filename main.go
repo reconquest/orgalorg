@@ -23,8 +23,8 @@ import (
 	"github.com/kovetskiy/lorg"
 	"github.com/mattn/go-shellwords"
 	"github.com/reconquest/barely"
-	"github.com/reconquest/loreley"
 	"github.com/reconquest/hierr-go"
+	"github.com/reconquest/loreley"
 	"github.com/theairkit/runcmd"
 )
 
@@ -757,7 +757,7 @@ func createRunnerFactory(
 	timeouts *runcmd.Timeouts,
 	sshKeyPath string,
 	askPassword bool,
-    sshForwarding bool,
+	sshForwarding bool,
 ) (runnerFactory, error) {
 	switch {
 	case askPassword:
@@ -778,9 +778,9 @@ func createRunnerFactory(
 
 	case sshForwarding:
 		sock := os.Getenv("SSH_AUTH_SOCK")
-        if sock == "" {
+		if sock == "" {
 			return nil, fmt.Errorf(`can't find ssh-agent socket`)
-        }
+		}
 
 		return createRemoteRunnerFactoryWithAgent(
 			sock,
