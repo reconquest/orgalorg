@@ -38,6 +38,20 @@ func createRemoteRunnerFactoryWithPassword(
 	}
 }
 
+func createRemoteRunnerFactoryWithAgent(
+	sock string,
+	timeouts *runcmd.Timeouts,
+) runnerFactory {
+	return func(address address) (runcmd.Runner, error) {
+		return createRunner(
+			runcmd.NewRemoteAgentAuthRunnerWithTimeouts,
+			sock,
+			address,
+			*timeouts,
+		)
+	}
+}
+
 func createRunner(
 	factory func(string, string, string, runcmd.Timeouts) (
 		*runcmd.Remote,

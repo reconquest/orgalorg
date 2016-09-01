@@ -23,8 +23,8 @@ import (
 	"github.com/kovetskiy/lorg"
 	"github.com/mattn/go-shellwords"
 	"github.com/reconquest/barely"
-	"github.com/reconquest/loreley"
 	"github.com/reconquest/hierr-go"
+	"github.com/reconquest/loreley"
 	"github.com/theairkit/runcmd"
 )
 
@@ -115,6 +115,9 @@ Options:
   -p --password           Enable password authentication.
                            Exclude '-k' option.
                            Interactive TTY is required for reading password.
+  -f --agent              Enable ssh-agent forwarding.
+                           Exclude '-k' option.
+                           Exclude '-p' option.
   -x --sudo               Obtain root via 'sudo -n'.
                            By default, orgalorg will not obtain root and do
                            all actions from specified user. To change that
@@ -600,6 +603,8 @@ func connectAndLock(
 		sendTimeout = args["--send-timeout"].(string)
 		defaultUser = args["--user"].(string)
 
+		sshForwarding = args["--agent"].(bool)
+
 		askPassword = args["--password"].(bool)
 		fromStdin   = args["--read-stdin"].(bool)
 
@@ -627,7 +632,7 @@ func connectAndLock(
 		)
 	}
 
-	runners, err := createRunnerFactory(timeouts, sshKeyPath, askPassword)
+	runners, err := createRunnerFactory(timeouts, sshKeyPath, askPassword, sshForwarding)
 	if err != nil {
 		return nil, hierr.Errorf(
 			err,
@@ -752,6 +757,7 @@ func createRunnerFactory(
 	timeouts *runcmd.Timeouts,
 	sshKeyPath string,
 	askPassword bool,
+	sshForwarding bool,
 ) (runnerFactory, error) {
 	switch {
 	case askPassword:
@@ -767,6 +773,17 @@ func createRunnerFactory(
 
 		return createRemoteRunnerFactoryWithPassword(
 			password,
+			timeouts,
+		), nil
+
+	case sshForwarding:
+		sock := os.Getenv("SSH_AUTH_SOCK")
+		if sock == "" {
+			return nil, fmt.Errorf(`can't find ssh-agent socket`)
+		}
+
+		return createRemoteRunnerFactoryWithAgent(
+			sock,
 			timeouts,
 		), nil
 
@@ -788,7 +805,7 @@ func createRunnerFactory(
 	}
 
 	return nil, fmt.Errorf(
-		`no matching runner factory found [password, publickey]`,
+		`no matching runner factory found [password, publickey, ssh-agent]`,
 	)
 }
 
