@@ -97,7 +97,8 @@ func (node *distributedLockNode) lock(
 	if err != nil {
 		return hierr.Errorf(
 			err,
-			`can't read line from lock process`,
+			`%s can't read lock status line from lock process`,
+			node,
 		)
 	}
 

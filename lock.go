@@ -24,6 +24,7 @@ func acquireDistributedLock(
 	addresses []address,
 	noLockFail bool,
 	noConnFail bool,
+	heartbeat func(*distributedLockNode),
 ) (*distributedLock, error) {
 	var (
 		cluster = &distributedLock{}
@@ -71,6 +72,8 @@ func acquireDistributedLock(
 							errors <- err
 							return
 						}
+					} else {
+						go heartbeat(node)
 					}
 				}
 
