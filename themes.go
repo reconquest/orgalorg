@@ -18,6 +18,7 @@ var (
 	statusBarThemeTemplate = `{bg %d}{fg %d}` +
 		`{bold}` +
 		`{if eq .Phase "lock"}{bg %d}  LOCK{end}` +
+		`{if eq .Phase "connect"}{bg %[3]d}  CONNECT{end}` +
 		`{if eq .Phase "exec"}{bg %d}  EXEC{end}` +
 		`{if eq .Phase "upload"}{bg %d}  UPLOAD{end}` +
 		`{nobold} ` +

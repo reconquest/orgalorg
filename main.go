@@ -23,8 +23,8 @@ import (
 	"github.com/kovetskiy/lorg"
 	"github.com/mattn/go-shellwords"
 	"github.com/reconquest/barely"
-	"github.com/reconquest/loreley"
 	"github.com/reconquest/hierr-go"
+	"github.com/reconquest/loreley"
 	"github.com/theairkit/runcmd"
 )
 
@@ -119,6 +119,7 @@ Options:
                            By default, orgalorg will not obtain root and do
                            all actions from specified user. To change that
                            behaviour, this option can be used.
+  -y --no-lock            Do not lock at all.
   -t --no-lock-fail       Try to obtain global lock, but only print warning if
                            it cannot be done, do not stop execution.
   -w --no-conn-fail       Skip unreachable servers whatsoever.
@@ -172,31 +173,31 @@ Advanced options:
   --no-preserve-gid       Do not preserve GIDs for transferred files.
 
 Output format and colors options:
-    --json               Output everything in line-by-line JSON format,
-                          printing objects with fields:
-                          * 'stream' = 'stdout' | 'stderr';
-                          * 'node' = <node-name> | null (if internal output);
-                          * 'body' = <string>
-    --bar-format <f>     Format for the status bar.
-                          Full Go template syntax is available with delims
-                          of '{' and '}'.
-                          See https://github.com/reconquest/barely for more
-                          info.
-                          For example, run orgalorg with '-vv' flag.
-                          Two embedded themes are available by their names:
-                          ` + themeDark + ` and ` + themeLight + `
-                          [default: ` + themeDefault + `]
-    --log-format <f>     Format for the logs.
-                          See https://github.com/reconquest/colorgful  for more
-                          info.
-                          [default: ` + themeDefault + `]
-    --colors-dark        Set all available formats to predefined dark theme.
-    --colors-light       Set all available formats to predefined light theme.
-    --color <mode>       Specify, whether to use colors:
-                          * never - disable colors;
-                          * auto - use colors only when TTY presents.
-                          * always - always use colorized output.
-                          [default: auto]
+    --json                Output everything in line-by-line JSON format,
+                           printing objects with fields:
+                           * 'stream' = 'stdout' | 'stderr';
+                           * 'node' = <node-name> | null (if internal output);
+                           * 'body' = <string>
+    --bar-format <f>      Format for the status bar.
+                           Full Go template syntax is available with delims
+                           of '{' and '}'.
+                           See https://github.com/reconquest/barely for more
+                           info.
+                           For example, run orgalorg with '-vv' flag.
+                           Two embedded themes are available by their names:
+                           ` + themeDark + ` and ` + themeLight + `
+                           [default: ` + themeDefault + `]
+    --log-format <f>      Format for the logs.
+                           See https://github.com/reconquest/colorgful  for more
+                           info.
+                           [default: ` + themeDefault + `]
+    --colors-dark         Set all available formats to predefined dark theme.
+    --colors-light        Set all available formats to predefined light theme.
+    --color <mode>        Specify, whether to use colors:
+                           * never - disable colors;
+                           * auto - use colors only when TTY presents.
+                           * always - always use colorized output.
+                           [default: auto]
 
 Timeout options:
   -c --conn-timeout <ms>  Remote host connection timeout in milliseconds.
@@ -609,6 +610,8 @@ func connectAndLock(
 
 		noConnFail = args["--no-conn-fail"].(bool)
 		noLockFail = args["--no-lock-fail"].(bool)
+
+		noLock = args["--no-lock"].(bool)
 	)
 
 	addresses, err := parseAddresses(hosts, defaultUser, fromStdin)
@@ -659,10 +662,11 @@ func connectAndLock(
 		float64(heartbeatMillisecondsBase)*heartbeatTimeoutCoefficient,
 	) * time.Millisecond
 
-	cluster, err := acquireDistributedLock(
+	cluster, err := connectToCluster(
 		lockFile,
 		runners,
 		addresses,
+		noLock,
 		noLockFail,
 		noConnFail,
 		func(node *distributedLockNode) {
@@ -672,11 +676,15 @@ func connectAndLock(
 	if err != nil {
 		return nil, hierr.Errorf(
 			err,
-			`acquiring global cluster lock failed`,
+			`connecting to cluster failed`,
 		)
 	}
 
-	debugf(`global lock acquired on %d nodes`, len(cluster.nodes))
+	if noLock {
+		debugf(`connection established to %d nodes`, len(cluster.nodes))
+	} else {
+		debugf(`global lock acquired on %d nodes`, len(cluster.nodes))
+	}
 
 	return cluster, nil
 }

@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/kovetskiy/lorg"
-	"github.com/reconquest/loreley"
 	"github.com/reconquest/hierr-go"
+	"github.com/reconquest/loreley"
 )
 
 var (
@@ -56,6 +56,7 @@ func setLoggerStyle(logger *lorg.Log, style lorg.Formatter) {
 	))
 
 	logger.SetFormat(style)
+	logger.SetIndentLines(true)
 }
 
 func tracef(format string, args ...interface{}) {

@@ -13,15 +13,16 @@ const (
 	longConnectionWarningTimeout = 2 * time.Second
 )
 
-// acquireDistributedLock tries to acquire atomic file lock on each of
+// connectToCluster tries to acquire atomic file lock on each of
 // specified remote nodes. lockFile is used to specify target lock file, it
 // must exist on every node. runnerFactory will be used to make connection
 // to remote node. If noLockFail is given, then only warning will be printed
 // if lock process has been failed.
-func acquireDistributedLock(
+func connectToCluster(
 	lockFile string,
 	runnerFactory runnerFactory,
 	addresses []address,
+	noLock bool,
 	noLockFail bool,
 	noConnFail bool,
 	heartbeat func(*distributedLockNode),
@@ -44,6 +45,10 @@ func acquireDistributedLock(
 		Total: int64(len(addresses)),
 	}
 
+	if noLock {
+		status.Phase = `connect`
+	}
+
 	setStatus(status)
 
 	for _, nodeAddress := range addresses {
@@ -64,16 +69,18 @@ func acquireDistributedLock(
 						return
 					}
 				} else {
-					err = node.lock(lockFile)
-					if err != nil {
-						if noLockFail {
-							warningln(err)
+					if !noLock {
+						err = node.lock(lockFile)
+						if err != nil {
+							if noLockFail {
+								warningln(err)
+							} else {
+								errors <- err
+								return
+							}
 						} else {
-							errors <- err
-							return
+							go heartbeat(node)
 						}
-					} else {
-						go heartbeat(node)
 					}
 				}
 
