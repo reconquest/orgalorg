@@ -7,9 +7,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/reconquest/hierr-go"
 	"github.com/reconquest/lineflushwriter-go"
 	"github.com/reconquest/prefixwriter-go"
-	"github.com/reconquest/hierr-go"
 	"github.com/theairkit/runcmd"
 )
 
