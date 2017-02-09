@@ -6,13 +6,13 @@ cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 
 source "vendor/github.com/reconquest/import.bash/import.bash"
 
-import:source "github.com/reconquest/hastur.bash"
-import:source "github.com/reconquest/containers.bash"
-import:source "github.com/reconquest/progress.bash"
-import:source "github.com/reconquest/test-runner.bash"
-import:source "github.com/reconquest/tests.sh"
-import:source "github.com/reconquest/go-test.bash"
-import:source "github.com/reconquest/ssh-test.bash"
+import:use "github.com/reconquest/hastur.bash"
+import:use "github.com/reconquest/containers.bash"
+import:use "github.com/reconquest/progress.bash"
+import:use "github.com/reconquest/test-runner.bash"
+import:use "github.com/reconquest/tests.sh"
+import:use "github.com/reconquest/go-test.bash"
+import:use "github.com/reconquest/ssh-test.bash"
 
 import:include tests/build.sh
 import:include tests/orgalorg.sh
