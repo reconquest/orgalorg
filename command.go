@@ -5,9 +5,9 @@ import (
 	"os"
 	"sync"
 
+	"github.com/reconquest/hierr-go"
 	"github.com/reconquest/lineflushwriter-go"
 	"github.com/reconquest/prefixwriter-go"
-	"github.com/reconquest/hierr-go"
 )
 
 type remoteNodesMap map[*distributedLockNode]*remoteExecutionNode
@@ -48,7 +48,28 @@ func runRemoteExecution(
 		outputLock = nil
 	}
 
-	errors := make(chan error, 0)
+	var (
+		status = &struct {
+			sync.Mutex
+
+			Phase   string
+			Total   int
+			Fails   int
+			Success int
+		}{
+			Phase: `exec`,
+			Total: len(lockedNodes.nodes),
+		}
+	)
+
+	setStatus(status)
+
+	type nodeErr struct {
+		err  error
+		node *distributedLockNode
+	}
+
+	errors := make(chan *nodeErr, 0)
 	for _, node := range lockedNodes.nodes {
 		go func(node *distributedLockNode) {
 			pool.run(func() {
@@ -68,7 +89,14 @@ func runRemoteExecution(
 					outputLock,
 				)
 				if err != nil {
-					errors <- err
+					errors <- &nodeErr{err, node}
+
+					status.Lock()
+					defer status.Unlock()
+
+					status.Total--
+					status.Fails++
+
 					return
 				}
 
@@ -81,10 +109,19 @@ func runRemoteExecution(
 
 				err = remoteNode.command.Start()
 				if err != nil {
-					errors <- hierr.Errorf(
-						err,
-						`can't start remote command`,
-					)
+					errors <- &nodeErr{
+						hierr.Errorf(
+							err,
+							`can't start remote command`,
+						),
+						node,
+					}
+
+					status.Lock()
+					defer status.Unlock()
+
+					status.Total--
+					status.Fails++
 
 					return
 				}
@@ -96,18 +133,23 @@ func runRemoteExecution(
 
 				stdins = append(stdins, remoteNode.stdin)
 
+				status.Lock()
+				defer status.Unlock()
+
+				status.Success++
+
 				errors <- nil
 			})
 		}(node)
 	}
 
-	for _, node := range lockedNodes.nodes {
+	for range lockedNodes.nodes {
 		err := <-errors
 		if err != nil {
 			return nil, hierr.Errorf(
-				err,
-				`remote execution failed on node: '%s'`,
-				node,
+				err.err,
+				`%s remote execution failed`,
+				err.node,
 			)
 		}
 	}

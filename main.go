@@ -414,7 +414,7 @@ func run(
 			err,
 			`remote execution failed, because one of `+
 				`command has been exited with non-zero exit `+
-				`code at least on one node`,
+				`code (or timed out) at least on one node`,
 		)
 	}
 

@@ -20,6 +20,7 @@ var (
 		`{if eq .Phase "lock"}{bg %d}  LOCK{end}` +
 		`{if eq .Phase "connect"}{bg %[3]d}  CONNECT{end}` +
 		`{if eq .Phase "exec"}{bg %d}  EXEC{end}` +
+		`{if eq .Phase "wait"}{bg %d}  WAIT{end}` +
 		`{if eq .Phase "upload"}{bg %d}  UPLOAD{end}` +
 		`{nobold} ` +
 		`{from "" %d} ` +
@@ -34,17 +35,17 @@ var (
 	statusBarThemes = map[string]string{
 		themeDark: fmt.Sprintf(
 			statusBarThemeTemplate,
-			99, 7, 22, 1, 25, 237, 46, 15, 214, -1, 140,
+			99, 7, 22, 1, 1, 25, 237, 46, 15, 214, -1, 140,
 		),
 
 		themeLight: fmt.Sprintf(
 			statusBarThemeTemplate,
-			99, 7, 22, 1, 64, 254, 106, 16, 9, -1, 140,
+			99, 7, 22, 1, 1, 64, 254, 106, 16, 9, -1, 140,
 		),
 
 		themeDefault: fmt.Sprintf(
 			statusBarThemeTemplate,
-			234, 255, 22, 1, 19, 245, 85, 255, 160, -1, 140,
+			234, 255, 22, 1, 1, 19, 245, 85, 255, 160, -1, 140,
 		),
 	}
 

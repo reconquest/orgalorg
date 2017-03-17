@@ -40,7 +40,7 @@ func (execution *remoteExecution) wait() error {
 			Fails   int
 			Success int
 		}{
-			Phase: `exec`,
+			Phase: `wait`,
 			Total: len(execution.nodes),
 		}
 
@@ -88,7 +88,7 @@ func (execution *remoteExecution) wait() error {
 			exitCodesValue := reflect.ValueOf(exitCodes)
 
 			topError := fmt.Errorf(
-				`commands are exited with non-zero exit code on all %d nodes`,
+				`commands are failed on all %d nodes`,
 				len(execution.nodes),
 			)
 
@@ -108,7 +108,7 @@ func (execution *remoteExecution) wait() error {
 
 		return hierr.Errorf(
 			executionErrors,
-			`commands are exited with non-zero exit code on %d of %d nodes`,
+			`commands are failed on %d out of %d nodes`,
 			status.Fails,
 			len(execution.nodes),
 		)

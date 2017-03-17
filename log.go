@@ -163,6 +163,8 @@ func setStatus(status interface{}) {
 		return
 	}
 
+	clearStatus()
+
 	statusbar.SetStatus(status)
 
 	drawStatus()
