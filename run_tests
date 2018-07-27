@@ -56,7 +56,7 @@ test-runner:progress() {
     go-test:set-output-dir "$(readlink -f .)"
     go-test:build orgalorg
 
-    hastur:init openssh,pam,util-linux,tar,iproute2,sudo,sed,procps-ng
+    hastur:init openssh,pam,util-linux,tar,iproute2,sudo,sed,procps-ng,systemd
 }
 
 :cleanup() {
