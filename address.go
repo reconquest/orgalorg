@@ -16,6 +16,8 @@ type address struct {
 	user   string
 	domain string
 	port   int
+
+	host string
 }
 
 func (address address) String() string {
@@ -58,6 +60,7 @@ func parseAddress(
 		user:   user,
 		domain: domain,
 		port:   port,
+		host:   host,
 	}, nil
 }
 

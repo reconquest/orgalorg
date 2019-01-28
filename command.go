@@ -176,6 +176,7 @@ func runRemoteExecutionNode(
 		stdoutBackend = &jsonOutputWriter{
 			stream: `stdout`,
 			node:   node.String(),
+			host:   node.address.host,
 
 			output: os.Stdout,
 		}
@@ -183,6 +184,7 @@ func runRemoteExecutionNode(
 		stderrBackend = &jsonOutputWriter{
 			stream: `stderr`,
 			node:   node.String(),
+			host:   node.address.host,
 
 			output: os.Stderr,
 		}
