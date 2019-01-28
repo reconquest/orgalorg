@@ -8,6 +8,7 @@ import (
 type jsonOutputWriter struct {
 	stream string
 	node   string
+	host   string
 
 	output io.Writer
 }
@@ -25,6 +26,12 @@ func (writer *jsonOutputWriter) Write(data []byte) (int, error) {
 		message["node"] = nil
 	} else {
 		message["node"] = writer.node
+	}
+
+	if writer.host == "" {
+		message["host"] = nil
+	} else {
+		message["host"] = writer.host
 	}
 
 	message["body"] = string(data)
