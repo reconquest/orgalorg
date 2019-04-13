@@ -10,7 +10,7 @@ import (
 	"github.com/reconquest/hierr-go"
 	"github.com/reconquest/lineflushwriter-go"
 	"github.com/reconquest/prefixwriter-go"
-	"github.com/theairkit/runcmd"
+	"github.com/reconquest/runcmd"
 )
 
 const (

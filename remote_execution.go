@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"io"
 	"reflect"
+	"syscall"
 
 	"github.com/reconquest/hierr-go"
+	"github.com/reconquest/karma-go"
 )
 
 type remoteExecution struct {
@@ -17,6 +19,27 @@ type remoteExecutionResult struct {
 	node *remoteExecutionNode
 
 	err error
+}
+
+func (execution *remoteExecution) signal(signal syscall.Signal) error {
+	errors := karma.Format(nil, "unable to send signal to nodes")
+	fails := 0
+
+	for _, node := range execution.nodes {
+		tracef("sending signal %v to %v", signal, node)
+
+		err := node.command.Signal(signal)
+		if err != nil {
+			errors = karma.Push(errors, fmt.Errorf("%s: %s", node.String(), err))
+			fails++
+		}
+	}
+
+	if fails > 0 {
+		return errors
+	}
+
+	return nil
 }
 
 func (execution *remoteExecution) wait() error {

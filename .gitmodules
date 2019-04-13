@@ -31,9 +31,6 @@
 [submodule "vendor/github.com/reconquest/ser-go"]
 	path = vendor/github.com/reconquest/ser-go
 	url = https://github.com/reconquest/ser-go
-[submodule "vendor/github.com/theairkit/runcmd"]
-	path = vendor/github.com/theairkit/runcmd
-	url = https://github.com/theairkit/runcmd
 [submodule "vendor/github.com/zazab/zhash"]
 	path = vendor/github.com/zazab/zhash
 	url = https://github.com/zazab/zhash

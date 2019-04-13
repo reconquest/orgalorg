@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"golang.org/x/crypto/ssh/terminal"
@@ -25,7 +26,8 @@ import (
 	"github.com/reconquest/barely"
 	"github.com/reconquest/hierr-go"
 	"github.com/reconquest/loreley"
-	"github.com/theairkit/runcmd"
+	"github.com/reconquest/runcmd"
+	"github.com/reconquest/sign-go"
 )
 
 var version = "[manual build]"
@@ -408,17 +410,29 @@ func run(
 		)
 	}
 
-	err = execution.wait()
-	if err != nil {
-		return hierr.Errorf(
-			err,
-			`remote execution failed, because one of `+
-				`command has been exited with non-zero exit `+
-				`code (or timed out) at least on one node`,
-		)
-	}
+	pipe := make(chan error)
 
-	return nil
+	go sign.Notify(func(signal os.Signal) bool {
+		pipe <- execution.signal(signal.(syscall.Signal))
+		return false
+	}, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		err = execution.wait()
+		if err != nil {
+			pipe <- hierr.Errorf(
+				err,
+				`remote execution failed, because one of `+
+					`command has been exited with non-zero exit `+
+					`code (or timed out) at least on one node`,
+			)
+			return
+		}
+
+		pipe <- nil
+	}()
+
+	return <-pipe
 }
 
 func handleSynchronize(args map[string]interface{}) error {

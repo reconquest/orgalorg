@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/reconquest/hierr-go"
-	"github.com/theairkit/runcmd"
+	"github.com/reconquest/runcmd"
 )
 
 const (

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/reconquest/hierr-go"
-	"github.com/theairkit/runcmd"
+	"github.com/reconquest/runcmd"
 )
 
 func makeTimeouts(args map[string]interface{}) (*runcmd.Timeouts, error) {

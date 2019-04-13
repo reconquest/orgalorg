@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/theairkit/runcmd"
+	"github.com/reconquest/runcmd"
 )
 
 type (
