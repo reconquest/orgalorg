@@ -385,7 +385,7 @@ func run(
 			return hierr.Errorf(
 				err,
 				`can't open file for passing as stdin: '%s'`,
-				inputFile,
+				stdin,
 			)
 		}
 
