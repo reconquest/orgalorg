@@ -2,13 +2,8 @@ package main
 
 import (
 	"bufio"
-	"bytes"
-	"crypto/x509"
-	"encoding/pem"
-	"errors"
-	"fmt"
 	"io"
-	"io/ioutil"
+	"net"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -17,15 +12,14 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/crypto/ssh/terminal"
-
 	"github.com/docopt/docopt-go"
 	"github.com/kovetskiy/lorg"
 	"github.com/mattn/go-shellwords"
 	"github.com/reconquest/barely"
 	"github.com/reconquest/hierr-go"
 	"github.com/reconquest/loreley"
-	"github.com/theairkit/runcmd"
+	"github.com/reconquest/runcmd"
+	"golang.org/x/crypto/ssh/agent"
 )
 
 var version = "[manual build]"
@@ -689,82 +683,12 @@ func connectAndLock(
 	return cluster, nil
 }
 
-func readSSHKey(path string) ([]byte, error) {
-	data, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, hierr.Errorf(
-			err,
-			`can't read SSH key from file`,
-		)
-	}
-
-	decoded, extra := pem.Decode(data)
-
-	if len(extra) != 0 {
-		return nil, hierr.Errorf(
-			errors.New(string(extra)),
-			`extra data found in the SSH key`,
-		)
-	}
-
-	if procType, ok := decoded.Headers[`Proc-Type`]; ok {
-		// according to pem_decrypt.go in stdlib
-		if procType == `4,ENCRYPTED` {
-			passphrase, err := readPassword(sshPassphrasePrompt)
-			if err != nil {
-				return nil, hierr.Errorf(
-					err,
-					`can't read key passphrase`,
-				)
-			}
-
-			data, err = x509.DecryptPEMBlock(decoded, []byte(passphrase))
-			if err != nil {
-				return nil, hierr.Errorf(
-					err,
-					`can't decrypt (using passphrase) SSH key`,
-				)
-			}
-
-			rsa, err := x509.ParsePKCS1PrivateKey(data)
-			if err != nil {
-				return nil, hierr.Errorf(
-					err,
-					`can't parse decrypted key as RSA key`,
-				)
-			}
-
-			pemBytes := bytes.Buffer{}
-			err = pem.Encode(
-				&pemBytes,
-				&pem.Block{
-					Type:  `RSA PRIVATE KEY`,
-					Bytes: x509.MarshalPKCS1PrivateKey(rsa),
-				},
-			)
-			if err != nil {
-				return nil, hierr.Errorf(
-					err,
-					`can't convert decrypted RSA key into PEM format`,
-				)
-			}
-
-			data = pemBytes.Bytes()
-		}
-	}
-
-	return data, nil
-}
-
 func createRunnerFactory(
-	timeouts *runcmd.Timeouts,
+	timeout *runcmd.Timeout,
 	sshKeyPath string,
 	askPassword bool,
 ) (runnerFactory, error) {
-	switch {
-	case askPassword:
-		var password string
-
+	if askPassword {
 		password, err := readPassword(sshPasswordPrompt)
 		if err != nil {
 			return nil, hierr.Errorf(
@@ -774,12 +698,29 @@ func createRunnerFactory(
 		}
 
 		return createRemoteRunnerFactoryWithPassword(
-			password,
-			timeouts,
+			string(password),
+			timeout,
 		), nil
+	}
 
-	case sshKeyPath != "":
-		key, err := readSSHKey(sshKeyPath)
+	var keyring agent.Agent
+	if os.Getenv("SSH_AUTH_SOCK") != "" {
+		sock, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
+		if err != nil {
+			return nil, hierr.Errorf(
+				err,
+				"unable to dial to ssh agent socket: %s",
+				os.Getenv("SSH_AUTH_SOCK"),
+			)
+		}
+
+		keyring = agent.NewClient(sock)
+	} else {
+		keyring = agent.NewKeyring()
+	}
+
+	if sshKeyPath != "" {
+		err := readSSHKey(keyring, sshKeyPath)
 		if err != nil {
 			return nil, hierr.Errorf(
 				err,
@@ -787,17 +728,12 @@ func createRunnerFactory(
 				sshKeyPath,
 			)
 		}
-
-		return createRemoteRunnerFactoryWithKey(
-			string(key),
-			timeouts,
-		), nil
-
 	}
 
-	return nil, fmt.Errorf(
-		`no matching runner factory found [password, publickey]`,
-	)
+	return createRemoteRunnerFactoryWithAgent(
+		keyring,
+		timeout,
+	), nil
 }
 
 func parseAddresses(
@@ -888,31 +824,4 @@ func setupInteractiveMode(args map[string]interface{}) {
 
 func generateRunID() string {
 	return time.Now().Format("20060102150405.999999")
-}
-
-func readPassword(prompt string) (string, error) {
-	fmt.Fprintf(os.Stderr, prompt)
-
-	tty, err := os.Open("/dev/tty")
-	if err != nil {
-		return "", hierr.Errorf(
-			err,
-			`TTY is required for reading password, `+
-				`but /dev/tty can't be opened`,
-		)
-	}
-
-	password, err := terminal.ReadPassword(int(tty.Fd()))
-	if err != nil {
-		return "", hierr.Errorf(
-			err,
-			`can't read password`,
-		)
-	}
-
-	if prompt != "" {
-		fmt.Fprintln(os.Stderr)
-	}
-
-	return string(password), nil
 }

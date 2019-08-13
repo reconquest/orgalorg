@@ -46,7 +46,16 @@ ssh-test:set-remote-runner :run-on-container
         tests:debug "[$container_name] is offline"
     done
 
-    tests:debug "[$container_name] is online"
+    while :; do
+        containers:get-ip ip "$container_name"
+        if [[ "$ip" ]]; then
+            break
+        fi
+
+        tests:debug "[$container_name] is online, but no ip assigned"
+    done
+
+    tests:debug "[$container_name] is online and has ip"
 }
 
 :wait-for-ssh-active() {
@@ -54,6 +63,7 @@ ssh-test:set-remote-runner :run-on-container
     local container_ip="$2"
 
     until ssh-test:connect:by-key "$container_ip" "true"; do
+        sleep 0.1
         tests:debug "[$container_name] sshd is offline"
     done
 

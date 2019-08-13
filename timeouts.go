@@ -5,10 +5,10 @@ import (
 	"time"
 
 	"github.com/reconquest/hierr-go"
-	"github.com/theairkit/runcmd"
+	"github.com/reconquest/runcmd"
 )
 
-func makeTimeouts(args map[string]interface{}) (*runcmd.Timeouts, error) {
+func makeTimeouts(args map[string]interface{}) (*runcmd.Timeout, error) {
 	var (
 		connectionTimeoutRaw = args["--conn-timeout"].(string)
 		sendTimeoutRaw       = args["--send-timeout"].(string)
@@ -52,10 +52,10 @@ func makeTimeouts(args map[string]interface{}) (*runcmd.Timeouts, error) {
 		)
 	}
 
-	return &runcmd.Timeouts{
-		ConnectionTimeout: time.Millisecond * time.Duration(connectionTimeout),
-		SendTimeout:       time.Millisecond * time.Duration(sendTimeout),
-		ReceiveTimeout:    time.Millisecond * time.Duration(receiveTimeout),
-		KeepAlive:         time.Millisecond * time.Duration(keepAlive),
+	return &runcmd.Timeout{
+		Connection: time.Millisecond * time.Duration(connectionTimeout),
+		Send:       time.Millisecond * time.Duration(sendTimeout),
+		Receive:    time.Millisecond * time.Duration(receiveTimeout),
+		KeepAlive:  time.Millisecond * time.Duration(keepAlive),
 	}, nil
 }

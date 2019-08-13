@@ -23,7 +23,7 @@ tests:ensure \
 tests:eval :orgalorg:with-key-passphrase "bla-$passphrase" -C -- \
     whoami
 
-tests:assert-stdout "decryption password incorrect"
+tests:assert-stdout "invalid passphrase for private key specified"
 
 tests:ensure :orgalorg:with-key-passphrase "$passphrase" -C -- \
     whoami

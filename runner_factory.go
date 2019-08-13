@@ -3,55 +3,42 @@ package main
 import (
 	"fmt"
 
-	"github.com/theairkit/runcmd"
+	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
+
+	"github.com/reconquest/runcmd"
 )
 
 type (
 	runnerFactory func(address address) (runcmd.Runner, error)
 )
 
-func createRemoteRunnerFactoryWithKey(
-	key string,
-	timeouts *runcmd.Timeouts,
+func createRemoteRunnerFactoryWithAgent(
+	keyring agent.Agent,
+	timeout *runcmd.Timeout,
 ) runnerFactory {
 	return func(address address) (runcmd.Runner, error) {
-		return createRunner(
-			runcmd.NewRemoteRawKeyAuthRunnerWithTimeouts,
-			key,
-			address,
-			*timeouts,
+		return runcmd.NewRemoteRunner(
+			address.user,
+			fmt.Sprintf("%s:%d", address.domain, address.port),
+			[]ssh.AuthMethod{
+				ssh.PublicKeysCallback(keyring.Signers),
+			},
+			*timeout,
 		)
 	}
 }
 
 func createRemoteRunnerFactoryWithPassword(
 	password string,
-	timeouts *runcmd.Timeouts,
+	timeout *runcmd.Timeout,
 ) runnerFactory {
 	return func(address address) (runcmd.Runner, error) {
-		return createRunner(
-			runcmd.NewRemotePassAuthRunnerWithTimeouts,
+		return runcmd.NewRemotePasswordAuthRunner(
+			address.user,
+			fmt.Sprintf("%s:%d", address.domain, address.port),
 			password,
-			address,
-			*timeouts,
+			*timeout,
 		)
 	}
-}
-
-func createRunner(
-	factory func(string, string, string, runcmd.Timeouts) (
-		*runcmd.Remote,
-		error,
-	),
-
-	key string,
-	address address,
-	timeouts runcmd.Timeouts,
-) (runcmd.Runner, error) {
-	return factory(
-		address.user,
-		fmt.Sprintf("%s:%d", address.domain, address.port),
-		key,
-		timeouts,
-	)
 }
