@@ -20,6 +20,8 @@ ssh-test:set-remote-runner :run-on-container
     tests:ensure containers:run "$container_name" -- \
         < "$(ssh-test:print-key-path).pub" \
         /usr/bin/sh -c "
+            ssh-keygen -A
+
             useradd -G wheel $(ssh-test:print-username)
 
             sed -r \"/wheel.*NOPASSWD/s/^#//\" -i /etc/sudoers
