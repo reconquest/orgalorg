@@ -719,17 +719,6 @@ func createRunnerFactory(
 		keyring = agent.NewKeyring()
 	}
 
-	if sshKeyPath != "" {
-		err := readSSHKey(keyring, sshKeyPath)
-		if err != nil {
-			return nil, hierr.Errorf(
-				err,
-				`can't read SSH key: '%s'`,
-				sshKeyPath,
-			)
-		}
-	}
-
 	return createRemoteRunnerFactoryWithAgent(
 		keyring,
 		timeout,
