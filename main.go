@@ -165,6 +165,7 @@ Advanced options:
                            [default: 16].
   --no-preserve-uid       Do not preserve UIDs for transferred files.
   --no-preserve-gid       Do not preserve GIDs for transferred files.
+  --no-upload             Do not upload files while syncing.
 
 Output format and colors options:
     --json                Output everything in line-by-line JSON format,
@@ -235,9 +236,7 @@ var (
 	statusbar *barely.StatusBar
 )
 
-var (
-	exit = os.Exit
-)
+var exit = os.Exit
 
 func main() {
 	args := parseArgs()
@@ -434,6 +433,8 @@ func handleSynchronize(args map[string]interface{}) error {
 		serial = args["--serial"].(bool)
 
 		fileSources = args["<files>"].([]string)
+
+		noUpload = args["--no-upload"].(bool)
 	)
 
 	var (
@@ -442,18 +443,20 @@ func handleSynchronize(args map[string]interface{}) error {
 		err error
 	)
 
-	if !lockOnly {
-		debugf(`building files list from %d sources`, len(fileSources))
-		filesList, err = getFilesList(relative, fileSources...)
-		if err != nil {
-			return hierr.Errorf(
-				err,
-				`can't build files list`,
-			)
-		}
+	if !noUpload {
+		if !lockOnly {
+			debugf(`building files list from %d sources`, len(fileSources))
+			filesList, err = getFilesList(relative, fileSources...)
+			if err != nil {
+				return hierr.Errorf(
+					err,
+					`can't build files list`,
+				)
+			}
 
-		debugf(`file list contains %d files`, len(filesList))
-		tracef(`files to upload: %+v`, filesList)
+			debugf(`file list contains %d files`, len(filesList))
+			tracef(`files to upload: %+v`, filesList)
+		}
 	}
 
 	canceler := sync.NewCond(&sync.Mutex{})
@@ -473,15 +476,17 @@ func handleSynchronize(args map[string]interface{}) error {
 		return nil
 	}
 
-	err = upload(args, cluster, filesList)
-	if err != nil {
-		return hierr.Errorf(
-			err,
-			`can't upload files on the remote nodes`,
-		)
-	}
+	if !noUpload {
+		err = upload(args, cluster, filesList)
+		if err != nil {
+			return hierr.Errorf(
+				err,
+				`can't upload files on the remote nodes`,
+			)
+		}
 
-	tracef(`upload done`)
+		tracef(`upload done`)
+	}
 
 	if uploadOnly {
 		return nil
@@ -741,9 +746,7 @@ func parseAddresses(
 	defaultUser string,
 	fromStdin bool,
 ) ([]address, error) {
-	var (
-		hostsToParse = []string{}
-	)
+	hostsToParse := []string{}
 
 	if fromStdin {
 		scanner := bufio.NewScanner(os.Stdin)
