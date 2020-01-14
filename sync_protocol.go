@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"time"
 
@@ -10,11 +11,12 @@ import (
 )
 
 var (
-	syncProtocolPrefix = "ORGALORG"
-	syncProtocolHello  = "HELLO"
-	syncProtocolNode   = "NODE"
-	syncProtocolStart  = "START"
-	syncProtocolSync   = "SYNC"
+	syncProtocolPrefix      = "ORGALORG"
+	syncProtocolHello       = "HELLO"
+	syncProtocolNode        = "NODE"
+	syncProtocolNodeCurrent = "CURRENT"
+	syncProtocolStart       = "START"
+	syncProtocolSync        = "SYNC"
 )
 
 // syncProtocol handles SYNC protocol described in the main.go.
@@ -58,12 +60,19 @@ func (protocol *syncProtocol) Init(output io.WriteCloser) error {
 
 // SendNode sends to the writer serialized representation of specified node as
 // NODE message.
-func (protocol *syncProtocol) SendNode(node *remoteExecutionNode) error {
-	_, err := io.WriteString(
-		protocol.output,
-		syncProtocolNode+" "+node.String()+"\n",
-	)
+func (protocol *syncProtocol) SendNode(
+	current *remoteExecutionNode,
+	neighbor *remoteExecutionNode,
+) error {
+	var line = syncProtocolNode + " " + neighbor.String()
+
+	if current == neighbor {
+		line += " " + syncProtocolNodeCurrent
+	}
+
+	_, err := io.WriteString(current.stdin, line+"\n")
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "XXXXXX sync_protocol.go:73 err: %s\n", err)
 		return protocolSuspendEOF(err)
 	}
 

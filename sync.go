@@ -33,14 +33,21 @@ func runSyncProtocol(
 
 	tracef(`sending information about %d nodes to each`, len(execution.nodes))
 
+	nodes := []*remoteExecutionNode{}
 	for _, node := range execution.nodes {
-		err = protocol.SendNode(node)
-		if err != nil {
-			return hierr.Errorf(
-				err,
-				`can't send node to sync tool: '%s'`,
-				node.String(),
-			)
+		nodes = append(nodes, node)
+	}
+
+	for _, node := range execution.nodes {
+		for _, neighbor := range nodes {
+			err := protocol.SendNode(node, neighbor)
+			if err != nil {
+				return hierr.Errorf(
+					err,
+					`can't send node to sync tool: '%s'`,
+					node.String(),
+				)
+			}
 		}
 	}
 

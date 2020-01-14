@@ -283,10 +283,13 @@ prefix.
 `orgalorg -> sync tool`
 
 ```
-<prefix> NODE <node>
+<prefix> NODE <node> [CURRENT]
 ```
 
 orgalorg will send node list to the sync tools on each running node.
+
+`CURRENT` flag will be present next to the node which is currently receiving
+protocol messages.
 
 ### START
 
@@ -334,7 +337,7 @@ continue to the next step of execution process.
 ```
 <- ORGALORG:132464327653 HELLO
 <- ORGALORG:132464327653 NODE [user@node1:22]
-<- ORGALORG:132464327653 NODE [user@node2:1234]
+<- ORGALORG:132464327653 NODE [user@node2:1234] CURRENT
 <- ORGALORG:132464327653 START
 -> (from node1) ORGALORG:132464327653 SYNC phase 1 completed
 <- ORGALORG:132464327653 SYNC [user@node1:22] phase 1 completed

@@ -53,7 +53,10 @@ space.
 Then, orgalorg will pass nodes list to each running node by sending 'NODE'
 commands, where '<node>' is unique node identifier:
 
-  <prefix> NODE <node>
+  <prefix> NODE <node> [CURRENT]
+
+'CURRENT' will present next to the node record which currently executes sync
+tool.
 
 After nodes list is exchausted, orgalorg will send 'START' marker, that means
 sync tool may proceed with execution.
