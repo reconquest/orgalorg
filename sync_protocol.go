@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"time"
 
@@ -72,7 +71,6 @@ func (protocol *syncProtocol) SendNode(
 
 	_, err := io.WriteString(current.stdin, line+"\n")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "XXXXXX sync_protocol.go:73 err: %s\n", err)
 		return protocolSuspendEOF(err)
 	}
 
