@@ -6,8 +6,11 @@ import (
 	"sync"
 
 	"github.com/reconquest/hierr-go"
+	"github.com/reconquest/karma-go"
 	"github.com/reconquest/lineflushwriter-go"
 	"github.com/reconquest/prefixwriter-go"
+	"github.com/reconquest/runcmd"
+	"golang.org/x/crypto/ssh"
 )
 
 type remoteNodesMap map[*distributedLockNode]*remoteExecutionNode
@@ -48,19 +51,17 @@ func runRemoteExecution(
 		outputLock = nil
 	}
 
-	var (
-		status = &struct {
-			sync.Mutex
+	status := &struct {
+		sync.Mutex
 
-			Phase   string
-			Total   int
-			Fails   int
-			Success int
-		}{
-			Phase: `exec`,
-			Total: len(lockedNodes.nodes),
-		}
-	)
+		Phase   string
+		Total   int
+		Fails   int
+		Success int
+	}{
+		Phase: `exec`,
+		Total: len(lockedNodes.nodes),
+	}
 
 	setStatus(status)
 
@@ -168,6 +169,20 @@ func runRemoteExecutionNode(
 	outputLock sync.Locker,
 ) (*remoteExecutionNode, error) {
 	remoteCommand := node.runner.Command(command[0], command[1:]...)
+
+	modes := ssh.TerminalModes{
+		ssh.ECHO:          0,     // disable echoing
+		ssh.TTY_OP_ISPEED: 14400, // input speed = 14.4kbaud
+		ssh.TTY_OP_OSPEED: 14400, // output speed = 14.4kbaud
+	}
+
+	err := remoteCommand.(*runcmd.RemoteCmd).GetSession().RequestPty("xterm", 40, 80, modes)
+	if err != nil {
+		return nil, karma.Format(
+			err,
+			"request for pseudo terminal failed",
+		)
+	}
 
 	stdoutBackend := io.Writer(os.Stdout)
 	stderrBackend := io.Writer(os.Stderr)
