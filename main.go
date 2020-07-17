@@ -354,6 +354,7 @@ func handleEvaluate(args map[string]interface{}) error {
 		command:   command,
 		directory: rootDir,
 		serial:    serial,
+		term:      true,
 	}
 
 	return run(cluster, runner, stdin)

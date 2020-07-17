@@ -8,9 +8,7 @@ import (
 	"github.com/reconquest/hierr-go"
 )
 
-var (
-	sudoCommand = []string{"sudo", "-n", "-E", "-H"}
-)
+var sudoCommand = []string{"sudo", "-n", "-E", "-H"}
 
 type remoteExecutionRunner struct {
 	command   []string
@@ -19,6 +17,7 @@ type remoteExecutionRunner struct {
 	directory string
 	sudo      bool
 	serial    bool
+	term      bool
 }
 
 func (runner *remoteExecutionRunner) run(
@@ -53,10 +52,10 @@ func (runner *remoteExecutionRunner) run(
 		)
 	}
 
-	return runRemoteExecution(cluster, command, setupCallback, runner.serial)
+	return runRemoteExecution(cluster, command, setupCallback, runner.serial, runner.term)
 }
 
-func wrapCommandIntoShell(command string, shell string, args []string) string {
+func wrapCommandIntoShell(command, shell string, args []string) string {
 	if shell == "" {
 		return command
 	}

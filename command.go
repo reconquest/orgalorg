@@ -36,6 +36,7 @@ func runRemoteExecution(
 	command []string,
 	setupCallback func(*remoteExecutionNode),
 	serial bool,
+	term bool,
 ) (*remoteExecution, error) {
 	var (
 		stdins = []io.WriteCloser{}
@@ -86,6 +87,7 @@ func runRemoteExecution(
 				remoteNode, err := runRemoteExecutionNode(
 					node,
 					command,
+					term,
 					logLock,
 					outputLock,
 				)
@@ -165,23 +167,26 @@ func runRemoteExecution(
 func runRemoteExecutionNode(
 	node *distributedLockNode,
 	command []string,
+	term bool,
 	logLock sync.Locker,
 	outputLock sync.Locker,
 ) (*remoteExecutionNode, error) {
 	remoteCommand := node.runner.Command(command[0], command[1:]...)
 
-	modes := ssh.TerminalModes{
-		ssh.ECHO:          0,     // disable echoing
-		ssh.TTY_OP_ISPEED: 14400, // input speed = 14.4kbaud
-		ssh.TTY_OP_OSPEED: 14400, // output speed = 14.4kbaud
-	}
+	if term {
+		modes := ssh.TerminalModes{
+			ssh.ECHO:          0,     // disable echoing
+			ssh.TTY_OP_ISPEED: 14400, // input speed = 14.4kbaud
+			ssh.TTY_OP_OSPEED: 14400, // output speed = 14.4kbaud
+		}
 
-	err := remoteCommand.(*runcmd.RemoteCmd).GetSession().RequestPty("xterm", 40, 80, modes)
-	if err != nil {
-		return nil, karma.Format(
-			err,
-			"request for pseudo terminal failed",
-		)
+		err := remoteCommand.(*runcmd.RemoteCmd).GetSession().RequestPty("xterm", 40, 80, modes)
+		if err != nil {
+			return nil, karma.Format(
+				err,
+				"request for pseudo terminal failed",
+			)
+		}
 	}
 
 	stdoutBackend := io.Writer(os.Stdout)
