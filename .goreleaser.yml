@@ -1,4 +1,4 @@
-project_name: prometheus-nginxlog-exporter
+project_name: orgalorg
 builds:
   - env:
       - CGO_ENABLED=0
