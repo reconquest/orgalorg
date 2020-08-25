@@ -10,6 +10,7 @@ builds:
     flags:
       - -mod=readonly
 checksum:
-  name_template: 'checksums.txt'
+  name_template: 'sha256sums.txt'
+  algorithm: sha256
 snapshot:
   name_template: "{{ .Tag }}-next"
