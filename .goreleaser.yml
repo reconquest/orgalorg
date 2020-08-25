@@ -1,0 +1,15 @@
+project_name: prometheus-nginxlog-exporter
+builds:
+  - env:
+      - CGO_ENABLED=0
+      - GO111MODULE=on
+    goos:
+      - linux
+    goarch:
+      - amd64
+    flags:
+      - -mod=readonly
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}-next"
