@@ -9,8 +9,6 @@ builds:
       - amd64
     flags:
       - -mod=readonly
-    gcflags:
-      - all=-trimpath={{.Env.GOPATH}}
     ldflags:
       - -X=main.version={{.Tag}}
 checksum:
