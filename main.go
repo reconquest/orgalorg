@@ -713,6 +713,7 @@ func createRunnerFactory(
 	}
 
 	var keyring agent.Agent
+	sshAgentAlive := false
 	if os.Getenv("SSH_AUTH_SOCK") != "" {
 		sock, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
 		if err != nil {
@@ -724,11 +725,12 @@ func createRunnerFactory(
 		}
 
 		keyring = agent.NewClient(sock)
+		sshAgentAlive = true
 	} else {
 		keyring = agent.NewKeyring()
 	}
 
-	if sshKeyPath != "" {
+	if !sshAgentAlive && sshKeyPath != "" {
 		err := readSSHKey(keyring, sshKeyPath)
 		if err != nil {
 			return nil, hierr.Errorf(
