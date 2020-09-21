@@ -1,18 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/kovetskiy/lorg"
 	"github.com/reconquest/hierr-go"
-	"github.com/reconquest/loreley"
-)
-
-var (
-	loggerFormattingBasicLength = 0
 )
 
 func setLoggerOutputFormat(logger *lorg.Log, format outputFormat) {
@@ -41,28 +35,16 @@ func setLoggerVerbosity(level verbosity, logger *lorg.Log) {
 }
 
 func setLoggerStyle(logger *lorg.Log, style lorg.Formatter) {
-	testLogger := lorg.NewLog()
-
-	testLogger.SetFormat(style)
-
-	buffer := &bytes.Buffer{}
-	testLogger.SetOutput(buffer)
-
-	testLogger.Debug(``)
-
-	loggerFormattingBasicLength = len(strings.TrimSuffix(
-		loreley.TrimStyles(buffer.String()),
-		"\n",
-	))
-
 	logger.SetFormat(style)
 	logger.SetIndentLines(true)
+
+	logger.SetShiftIndent(28)
 }
 
 func tracef(format string, args ...interface{}) {
 	args = serializeErrors(args)
 
-	logger.Tracef(`%s`, wrapLines(format, args...))
+	logger.Tracef(format, args...)
 
 	drawStatus()
 }
@@ -74,7 +56,7 @@ func traceln(args ...interface{}) {
 func debugf(format string, args ...interface{}) {
 	args = serializeErrors(args)
 
-	logger.Debugf(`%s`, wrapLines(format, args...))
+	logger.Debugf(format, args...)
 
 	drawStatus()
 }
@@ -86,7 +68,7 @@ func debugln(args ...interface{}) {
 func infof(format string, args ...interface{}) {
 	args = serializeErrors(args)
 
-	logger.Infof(`%s`, wrapLines(format, args...))
+	logger.Infof(format, args...)
 
 	drawStatus()
 }
@@ -102,7 +84,7 @@ func warningf(format string, args ...interface{}) {
 		return
 	}
 
-	logger.Warningf(`%s`, wrapLines(format, args...))
+	logger.Warningf(format, args...)
 
 	drawStatus()
 }
@@ -114,7 +96,7 @@ func warningln(args ...interface{}) {
 func errorf(format string, args ...interface{}) {
 	args = serializeErrors(args)
 
-	logger.Errorf(`%s`, wrapLines(format, args...))
+	logger.Errorf(format, args...)
 }
 
 func errorln(args ...interface{}) {
@@ -126,26 +108,13 @@ func fatalf(format string, args ...interface{}) {
 
 	clearStatus()
 
-	logger.Fatalf(`%s`, wrapLines(format, args...))
+	logger.Fatalf(format, args...)
 
 	exit(1)
 }
 
 func fatalln(args ...interface{}) {
 	fatalf("%s", fmt.Sprint(serializeErrors(args)...))
-}
-
-func wrapLines(format string, values ...interface{}) string {
-	contents := fmt.Sprintf(format, values...)
-	contents = strings.TrimSuffix(contents, "\n")
-	contents = strings.Replace(
-		contents,
-		"\n",
-		"\n"+strings.Repeat(" ", loggerFormattingBasicLength),
-		-1,
-	)
-
-	return contents
 }
 
 func serializeErrors(args []interface{}) []interface{} {

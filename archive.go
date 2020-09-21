@@ -9,9 +9,9 @@ import (
 	"sync"
 	"syscall"
 
+	"github.com/reconquest/hierr-go"
 	"github.com/reconquest/lineflushwriter-go"
 	"github.com/reconquest/prefixwriter-go"
-	"github.com/reconquest/hierr-go"
 )
 
 func startArchiveReceivers(
@@ -162,7 +162,6 @@ func writeFileToArchive(
 	preserveUID, preserveGID bool,
 ) error {
 	fileInfo, err := os.Stat(fileName)
-
 	if err != nil {
 		return hierr.Errorf(
 			err,
@@ -281,7 +280,6 @@ func getFilesList(relative bool, sources ...string) ([]file, error) {
 				return nil
 			},
 		)
-
 		if err != nil {
 			return nil, err
 		}
