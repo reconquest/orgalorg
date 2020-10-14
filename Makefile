@@ -1,6 +1,5 @@
-vendor/%/Makefile:
-	bash -c 'source vendor/github.com/reconquest/import.bash/import.bash && \
-		import "$*"'
+build:
+	go build -mod=mod -ldflags -X=main.version=$$(git describe --tags --abbrev=6)
 
-include vendor/github.com/reconquest/test-runner.bash/Makefile
-include vendor/github.com/reconquest/go-test.bash/Makefile
+test:
+	./run_tests -vvvv
