@@ -332,11 +332,11 @@ func formatUsage(template string) (string, error) {
 
 func handleEvaluate(args map[string]interface{}) error {
 	var (
-		stdin, _   = args["--stdin"].(string)
-		rootDir, _ = args["--root"].(string)
-		sudo       = args["--sudo"].(bool)
-		shell      = args["--shell"].(string)
-		serial     = args["--serial"].(bool)
+		stdin, hasStdin = args["--stdin"].(string)
+		rootDir, _      = args["--root"].(string)
+		sudo            = args["--sudo"].(bool)
+		shell           = args["--shell"].(string)
+		serial          = args["--serial"].(bool)
 
 		command = args["<command>"].([]string)
 	)
@@ -354,7 +354,7 @@ func handleEvaluate(args map[string]interface{}) error {
 		command:   command,
 		directory: rootDir,
 		serial:    serial,
-		term:      true,
+		term:      !hasStdin,
 	}
 
 	return run(cluster, runner, stdin)
@@ -386,6 +386,8 @@ func run(
 			)
 		}
 
+		defer inputFile.Close()
+
 		_, err = io.Copy(execution.stdin, inputFile)
 		if err != nil {
 			return hierr.Errorf(
@@ -393,6 +395,7 @@ func run(
 				`can't copy input file to the execution processes`,
 			)
 		}
+
 	}
 
 	debugf(`commands are running, waiting for finish`)

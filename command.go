@@ -180,7 +180,12 @@ func runRemoteExecutionNode(
 			ssh.TTY_OP_OSPEED: 14400, // output speed = 14.4kbaud
 		}
 
-		err := remoteCommand.(*runcmd.RemoteCmd).GetSession().RequestPty("xterm", 40, 80, modes)
+		err := remoteCommand.(*runcmd.RemoteCmd).GetSession().RequestPty(
+			"xterm",
+			40,
+			80,
+			modes,
+		)
 		if err != nil {
 			return nil, karma.Format(
 				err,
