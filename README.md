@@ -29,7 +29,7 @@
 * Both strict or loose modes of failover to be sure that everything will either
   fail on any error or try to complete, no matter of what.
 
-* Interactive password authentication as well as SSH public key authentication.
+* Interactive password authentication as well as SSH public key authentication. Will use ssh-agent if present. On Windows, orgalorg can connect to **pageant** or **openssh agent**.
 
 * Ability to run commands through `sudo`.
 
@@ -47,18 +47,18 @@ go get github.com/reconquest/orgalorg
 
 # Alternatives
 
-* ansible: intended to apply complex DSL-based scenarios of actions;  
+* ansible: intended to apply complex DSL-based scenarios of actions;
   orgalorg aimed only on running commands and synchronizing files in parallel.
   orgalorg can accept target hosts list on stdin and can provide realtime
   output from commands, which ansible can't do (like running `tail -f`).
-  orgalorg also uses same argument semantic as `ssh`:  
+  orgalorg also uses same argument semantic as `ssh`:
   `orgalorg ... -C tail -f '/var/log/*.log'` will do exactly the same.
 
-* clusterssh / cssh: will open number of xterm terminals to all nodes.  
+* clusterssh / cssh: will open number of xterm terminals to all nodes.
   orgalorg intended to use in batch mode, no GUI is assumed. orgalorg, however,
   can be used in interactive mode (see example section below).
 
-* pssh: buggy, uses binary ssh, which is not resource efficient.  
+* pssh: buggy, uses binary ssh, which is not resource efficient.
   orgalorg uses native SSH protocol implementation, so safe and fast to use
   on thousand of nodes.
 
@@ -67,7 +67,7 @@ go get github.com/reconquest/orgalorg
 # Example usages
 
 `-o <host>...` in later examples will mean any supported combination of
-host-specification arguments, like  
+host-specification arguments, like
 `-o node1.example.com -o node2.example.com`.
 
 ## Evaluating command on hosts in parallel
@@ -170,7 +170,6 @@ So, orgalorg expected to work with third-party synchronization tool, that
 will do actual files relocation and can be quite intricate, **but orgalorg can
 work without that tool and perform simple files sync (more on this later)**.
 
-
 ## Global Cluster Lock
 
 Before doing anything else orgalorg will perform global cluster lock. That lock
@@ -191,7 +190,6 @@ sync procedure.
 User can stop there by using `--lock` or `-L` flag, effectively transform
 orgalorg to the distributed locking tool.
 
-
 ## File Upload
 
 Files will be sent from local node to the amount of specified nodes.
@@ -209,7 +207,7 @@ directory and then exit.
 
 orgalorg preserves all file attributes while transfer as well as user and group
 IDs. That behaviour can be changed by using `--no-preserve-uid` and
-`--no-preseve-gid` command line options.
+`--no-preseve-gid` command line options. These flags are ignored when orgalorg is ran from Windows.
 
 By default, orgalorg will keep source file paths as is, creating same directory
 layout on the target nodes. E.g., if orgalorg told to upload file `a` while
@@ -223,7 +221,6 @@ default). However, if user has `NOPASSWD` record in the sudoers file on the
 remote nodes, `--sudo` or `-x` can be used to elevate to root before uploading
 files. It makes possible to login to the remote nodes under normal user and
 rewrite system files.
-
 
 ## Synchronization Tool
 
@@ -245,7 +242,6 @@ to that program by using `--stdin` or `-i` flag.
 Tool can accept number of arguments, which can be specified  by using `-g` or
 `--arg` flags.
 
-
 # Synchronization Protocol
 
 orgalorg will communicate with given sync tool using special sync protocol,
@@ -263,7 +259,6 @@ send by orgalorg in the hello message. All lines on stdout that are not match
 given prefix will be printed as is, untouched.
 
 Communication begins from the hello message.
-
 
 ## Protocol
 
