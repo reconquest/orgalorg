@@ -165,7 +165,7 @@ Advanced options:
   -d --threads <n>        Set threads count which will be used for connection,
                            locking and execution commands.
                            [default: 16].
-` + helpNoPreserveUidGuid + `  --no-upload             Do not upload files while syncing.
+` + helpNoPreserveUidGid + `  --no-upload             Do not upload files while syncing.
 
 Output format and colors options:
     --json                Output everything in line-by-line JSON format,

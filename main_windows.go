@@ -2,4 +2,4 @@
 
 package main
 
-const helpNoPreserveUidGuid = ``
+const helpNoPreserveUidGid = ``
