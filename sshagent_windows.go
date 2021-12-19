@@ -15,9 +15,8 @@ const (
 )
 
 func getSshAgent() (agent.Agent, error) {
-	pageant_window := pageant.Available()
 	debugf(`trying windows pageant`)
-	if pageant_window {
+	if pageant.Available() {
 		return pageant.New(), nil
 	} else {
 		debugf("    pageant is not found")

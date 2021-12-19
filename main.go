@@ -165,11 +165,7 @@ Advanced options:
   -d --threads <n>        Set threads count which will be used for connection,
                            locking and execution commands.
                            [default: 16].
-  --no-preserve-uid       Do not preserve UIDs for transferred files.
-                           Not applicable when running in Windows.
-  --no-preserve-gid       Do not preserve GIDs for transferred files.
-                           Not applicable when running in Windows.
-  --no-upload             Do not upload files while syncing.
+` + helpNoPreserveUidGuid + `  --no-upload             Do not upload files while syncing.
 
 Output format and colors options:
     --json                Output everything in line-by-line JSON format,

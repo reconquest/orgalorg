@@ -29,7 +29,9 @@
 * Both strict or loose modes of failover to be sure that everything will either
   fail on any error or try to complete, no matter of what.
 
-* Interactive password authentication as well as SSH public key authentication. Will use ssh-agent if present. On Windows, orgalorg can connect to **pageant** or **openssh agent**.
+* Interactive password authentication as well as SSH public key authentication.
+  Will use ssh-agent if present. On Windows, orgalorg can connect to
+  **pageant** or **openssh agent**.
 
 * Ability to run commands through `sudo`.
 
@@ -207,7 +209,8 @@ directory and then exit.
 
 orgalorg preserves all file attributes while transfer as well as user and group
 IDs. That behaviour can be changed by using `--no-preserve-uid` and
-`--no-preseve-gid` command line options. These flags are ignored when orgalorg is ran from Windows.
+`--no-preseve-gid` command line options. These flags are ignored when orgalorg
+is ran from Windows.
 
 By default, orgalorg will keep source file paths as is, creating same directory
 layout on the target nodes. E.g., if orgalorg told to upload file `a` while
