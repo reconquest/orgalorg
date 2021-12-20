@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"io"
-	"net"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -166,9 +165,7 @@ Advanced options:
   -d --threads <n>        Set threads count which will be used for connection,
                            locking and execution commands.
                            [default: 16].
-  --no-preserve-uid       Do not preserve UIDs for transferred files.
-  --no-preserve-gid       Do not preserve GIDs for transferred files.
-  --no-upload             Do not upload files while syncing.
+` + helpNoPreserveUidGid + `  --no-upload             Do not upload files while syncing.
 
 Output format and colors options:
     --json                Output everything in line-by-line JSON format,
@@ -715,25 +712,25 @@ func createRunnerFactory(
 		), nil
 	}
 
-	var keyring agent.Agent
-	sshAgentAlive := false
-	if os.Getenv("SSH_AUTH_SOCK") != "" {
-		sock, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
-		if err != nil {
-			return nil, hierr.Errorf(
-				err,
-				"unable to dial to ssh agent socket: %s",
-				os.Getenv("SSH_AUTH_SOCK"),
-			)
-		}
-
-		keyring = agent.NewClient(sock)
-		sshAgentAlive = true
-	} else {
+	keyring, err := getSshAgent()
+	if err != nil {
+		debugf(`failed to connect to a ssh-agent: %s`, err)
+	}
+	keyListEmpty := true
+	if keyring == nil {
 		keyring = agent.NewKeyring()
+	} else {
+		li, err := keyring.List()
+		if err != nil {
+			debugf(`    could not get agent keys list: %s`, err)
+		}
+		keyListEmpty = len(li) < 1
+		if keyListEmpty {
+			debugf(`    agent keys list is empty`)
+		}
 	}
 
-	if !sshAgentAlive && sshKeyPath != "" {
+	if keyListEmpty && sshKeyPath != "" {
 		err := readSSHKey(keyring, sshKeyPath)
 		if err != nil {
 			return nil, hierr.Errorf(

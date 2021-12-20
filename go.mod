@@ -4,7 +4,9 @@ go 1.14
 
 require (
 	github.com/BurntSushi/toml v0.4.1 // indirect
+	github.com/Microsoft/go-winio v0.5.1
 	github.com/ScaleFT/sshkeys v0.0.0-20200327173127-6142f742bca5
+	github.com/davidmz/go-pageant v1.0.2
 	github.com/docopt/docopt-go v0.0.0-20180111231733-ee0de3bc6815
 	github.com/kovetskiy/lorg v0.0.0-20200107130803-9a7136a95634
 	github.com/mattn/go-shellwords v1.0.12
