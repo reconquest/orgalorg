@@ -41,10 +41,10 @@
 
 # Installation
 
-## go get
+## go install
 
 ```bash
-go get github.com/reconquest/orgalorg
+go install github.com/reconquest/orgalorg@latest
 ```
 
 # Alternatives
