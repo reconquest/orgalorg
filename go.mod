@@ -19,7 +19,7 @@ require (
 	github.com/reconquest/runcmd v0.0.0-20210624093503-38dc6a8c98bd
 	github.com/stretchr/testify v1.8.2
 	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78
-	golang.org/x/crypto v0.26.0
+	golang.org/x/crypto v0.31.0
 )
 
 require (
@@ -28,7 +28,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/reconquest/nopio-go v0.0.0-20161213101805-20796acb207f // indirect
 	github.com/zazab/zhash v0.0.0-20221031090444-2b0d50417446 // indirect
-	golang.org/x/sys v0.24.0 // indirect
-	golang.org/x/term v0.23.0 // indirect
+	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/term v0.27.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
